@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE GRID - Color Palette</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .heading-font { font-family: 'Rajdhani', sans-serif; }
+        
+        /* Custom scrollbar for dark mode */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0D0E12; }
+        ::-webkit-scrollbar-thumb { background: #232732; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-[#0D0E12] text-neutral-50 p-8 min-h-screen relative">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 bg-[#00F5D4] text-[#0D0E12] px-6 py-3 rounded shadow-lg shadow-cyan-500/20 font-bold opacity-0 transition-opacity duration-300 pointer-events-none z-50">
+        Copied to clipboard!
+    </div>
+
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-12 border-b border-[#232732] pb-6">
+            <h1 class="text-4xl font-bold tracking-wider mb-2 uppercase">The Grid <span class="text-[#00F5D4]">Palette</span></h1>
+            <p class="text-neutral-400">Click any card to copy its Hex Code. Tailwind classes provided for quick full-stack integration.</p>
+        </header>
+
+        <!-- Main Grid -->
+        <div class="space-y-12">
+
+            <!-- Section: Foundations -->
+            <section>
+                <h2 class="text-2xl font-bold text-neutral-400 mb-6 uppercase tracking-widest heading-font">1. Foundations (Backgrounds)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Base BG -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#00F5D4] transition-colors" onclick="copyText('#0D0E12')">
+                        <div class="h-24 bg-[#0D0E12] border-b border-[#232732]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg mb-1">App Background</h3>
+                            <p class="text-sm text-[#00F5D4] mb-2">bg-neutral-950</p>
+                            <p class="text-xs text-neutral-400 font-mono">#0D0E12</p>
+                        </div>
+                    </div>
+                    <!-- Card BG -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#00F5D4] transition-colors" onclick="copyText('#161920')">
+                        <div class="h-24 bg-[#161920] border-b border-[#232732]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg mb-1">Card / Panel</h3>
+                            <p class="text-sm text-[#00F5D4] mb-2">bg-neutral-900</p>
+                            <p class="text-xs text-neutral-400 font-mono">#161920</p>
+                        </div>
+                    </div>
+                    <!-- Border -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#00F5D4] transition-colors" onclick="copyText('#232732')">
+                        <div class="h-24 bg-[#232732] border-b border-[#232732]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg mb-1">Dividers & Borders</h3>
+                            <p class="text-sm text-[#00F5D4] mb-2">border-neutral-800</p>
+                            <p class="text-xs text-neutral-400 font-mono">#232732</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section: Brand & Typography -->
+            <section>
+                <h2 class="text-2xl font-bold text-neutral-400 mb-6 uppercase tracking-widest heading-font">2. Brand & Typography</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Cyan Accent -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#00F5D4] transition-colors" onclick="copyText('#00F5D4')">
+                        <div class="h-20 bg-[#00F5D4]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-md mb-1">Primary Cyan</h3>
+                            <p class="text-xs text-[#00F5D4] mb-2">text-cyan-400</p>
+                            <p class="text-xs text-neutral-400 font-mono">#00F5D4</p>
+                        </div>
+                    </div>
+                    <!-- Primary Text -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#00F5D4] transition-colors" onclick="copyText('#F8FAFC')">
+                        <div class="h-20 bg-[#F8FAFC]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-md mb-1 text-neutral-300">Primary Text</h3>
+                            <p class="text-xs text-[#00F5D4] mb-2">text-neutral-50</p>
+                            <p class="text-xs text-neutral-400 font-mono">#F8FAFC</p>
+                        </div>
+                    </div>
+                    <!-- Secondary Text -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#00F5D4] transition-colors" onclick="copyText('#94A3B8')">
+                        <div class="h-20 bg-[#94A3B8]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-md mb-1">Secondary Text</h3>
+                            <p class="text-xs text-[#00F5D4] mb-2">text-neutral-400</p>
+                            <p class="text-xs text-neutral-400 font-mono">#94A3B8</p>
+                        </div>
+                    </div>
+                    <!-- Muted Text -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#00F5D4] transition-colors" onclick="copyText('#475569')">
+                        <div class="h-20 bg-[#475569]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-md mb-1">Muted / Timestamp</h3>
+                            <p class="text-xs text-[#00F5D4] mb-2">text-neutral-600</p>
+                            <p class="text-xs text-neutral-400 font-mono">#475569</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section: System Status -->
+            <section>
+                <h2 class="text-2xl font-bold text-neutral-400 mb-6 uppercase tracking-widest heading-font">3. System Status (Dashboards)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Available -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#06D6A0] transition-colors" onclick="copyText('#06D6A0')">
+                        <div class="h-20 bg-[#06D6A0]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg mb-1">Available</h3>
+                            <p class="text-sm text-[#00F5D4] mb-2">bg-emerald-500</p>
+                            <p class="text-xs text-neutral-400 font-mono">#06D6A0</p>
+                        </div>
+                    </div>
+                    <!-- Occupied -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#FF477E] transition-colors" onclick="copyText('#FF477E')">
+                        <div class="h-20 bg-[#FF477E]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg mb-1">Occupied / Running</h3>
+                            <p class="text-sm text-[#00F5D4] mb-2">bg-rose-500</p>
+                            <p class="text-xs text-neutral-400 font-mono">#FF477E</p>
+                        </div>
+                    </div>
+                    <!-- Warning -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#FFD166] transition-colors" onclick="copyText('#FFD166')">
+                        <div class="h-20 bg-[#FFD166]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg mb-1 text-neutral-300">Warning (<10 min)</h3>
+                            <p class="text-sm text-[#00F5D4] mb-2">bg-amber-500</p>
+                            <p class="text-xs text-neutral-400 font-mono">#FFD166</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section: Tournament Mode -->
+            <section>
+                <h2 class="text-2xl font-bold text-[#8338EC] mb-6 uppercase tracking-widest heading-font">4. Tournament Mode Enhancements</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Tournament Primary -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#8338EC] transition-colors" onclick="copyText('#8338EC')">
+                        <div class="h-24 bg-[#8338EC]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg mb-1">Tournament Base (Violet)</h3>
+                            <p class="text-sm text-[#00F5D4] mb-2">bg-violet-600</p>
+                            <p class="text-xs text-neutral-400 font-mono">#8338EC</p>
+                        </div>
+                    </div>
+                    <!-- Tournament Match -->
+                    <div class="bg-[#161920] border border-[#232732] rounded-lg overflow-hidden cursor-pointer hover:border-[#FF5400] transition-colors" onclick="copyText('#FF5400')">
+                        <div class="h-24 bg-[#FF5400]"></div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg mb-1">Tournament Match (Orange)</h3>
+                            <p class="text-sm text-[#00F5D4] mb-2">bg-orange-500</p>
+                            <p class="text-xs text-neutral-400 font-mono">#FF5400</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Copy Script -->
+    <script>
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const toast = document.getElementById('toast');
+                toast.innerText = 'Copied: ' + text;
+                toast.classList.remove('opacity-0');
+                
+                setTimeout(() => {
+                    toast.classList.add('opacity-0');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+    </script>
+</body>
+</html>

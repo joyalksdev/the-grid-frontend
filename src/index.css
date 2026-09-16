@@ -1,0 +1,37 @@
+@import 'tailwindcss';  
+
+@theme {
+  /* Foundations & Backgrounds (OLED Deep Space & Rich Navy Obsidian) */
+  --color-app-bg: #05070E;
+  --color-card-panel: #0E131F;
+  --color-border-divider: #1C2436;
+
+  /* Accents & Brand (Hyper Electric Cyan) */
+  --color-primary-cyan: #00F6FF;
+  
+  /* System Status States (Vibrant High-Contrast Neon) */
+  --color-available: #00FF87;  /* Acid Emerald */
+  --color-occupied: #FF0055;   /* Cyber Crimson Pink */
+  --color-warning: #FFB800;    /* Neon Amber */
+
+  /* Tournament Mode Additions (Esports Violet & Electric Blaze) */
+  --color-tournament-primary: #8B5CF6;
+  --color-tournament-match: #FF5500;
+
+  /* Text & Typography (Ultra-Crisp Visual Hierarchy) */
+  --color-main: #FFFFFF;
+  --color-sub: #8E9BAE;
+  --color-muted: #4B5565;
+
+  /* Fonts Configuration */
+  --font-logo: "Orbitron", sans-serif;
+  --font-heading: "Rajdhani", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background-color: var(--color-app-bg);
+  color: var(--color-main);
+}
