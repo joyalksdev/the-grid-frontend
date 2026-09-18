@@ -23,15 +23,15 @@ export default function SettingsLayout() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header Banner */}
-      <div className="pb-5 border-b border-[#232732] flex items-center justify-between">
+      <div className="pb-5 border-b border-border-divider flex items-center justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[#00F5D4]">
-            <Gear size={24} className="shrink-0" />
-            <h1 className="text-xl md:text-2xl font-bold font-heading uppercase tracking-wide text-white">
+          <div className="flex items-center gap-2 text-primary-cyan">
+            <Gear size={28} className="shrink-0" />
+            <h1 className="text-xl md:text-2xl font-bold font-heading uppercase tracking-wide text-main">
               System Control Center
             </h1>
           </div>
-          <p className="text-xs text-zinc-400 font-mono">
+          <p className="text-xs text-sub font-body mt-1">
             Configure system parameters, station pricing, and operator permissions.
           </p>
         </div>
@@ -40,9 +40,9 @@ export default function SettingsLayout() {
       {/* Main Settings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
         {/* Settings Sub-Sidebar */}
-        <aside className="md:col-span-1 bg-[#161920] border border-[#232732] rounded-xl p-2.5 space-y-1 select-none">
-          <div className="px-3 py-2 border-b border-[#232732]/60 mb-1">
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">
+        <aside className="md:col-span-1 bg-card-panel border border-border-divider rounded-xl p-2.5 space-y-1 select-none">
+          <div className="px-3 py-2 border-b border-border-divider/60 mb-1">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted">
               Settings Menu
             </span>
           </div>
@@ -58,8 +58,8 @@ export default function SettingsLayout() {
                   to={item.path}
                   className={`flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                     isActive
-                      ? "bg-[#00F5D4]/10 text-[#00F5D4] border border-[#00F5D4]/30 font-bold"
-                      : "text-zinc-400 hover:text-white hover:bg-[#0D0E12] border border-transparent"
+                      ? "bg-primary-cyan/10 text-primary-cyan border border-primary-cyan/30 font-bold"
+                      : "text-sub hover:text-main hover:bg-app-bg border border-transparent"
                   }`}
                 >
                   <Icon size={18} className="mt-0.5 shrink-0" />
@@ -67,7 +67,7 @@ export default function SettingsLayout() {
                     <p className="text-xs uppercase tracking-wider leading-none truncate">
                       {item.label}
                     </p>
-                    <p className="text-[10px] text-zinc-500 normal-case line-clamp-1 font-normal">
+                    <p className="text-[10px] text-muted normal-case line-clamp-1 font-body font-normal">
                       {item.description}
                     </p>
                   </div>
