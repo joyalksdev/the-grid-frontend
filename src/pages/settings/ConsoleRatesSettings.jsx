@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FloppyDisk, CurrencyInr, GameController } from "@phosphor-icons/react";
+import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { pricingService } from "../../services/pricingService";
+import Loader from "../../components/ui/Loader";
 
 export default function ConsoleRatesSettings() {
   const [loading, setLoading] = useState(true);
@@ -41,19 +43,23 @@ export default function ConsoleRatesSettings() {
 
   if (loading) {
     return (
-      <div className="p-6 bg-[#161920] border border-[#232732] rounded-xl text-xs font-mono text-[#00F5D4] tracking-widest uppercase animate-pulse">
-        Loading system rates...
+      <div className="space-y-4">
+        <Loader variant="skeleton-card" />
+        <Loader variant="skeleton-card" />
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSave} className="space-y-5 font-mono">
-      {/* Base Rates Section */}
-      <div className="bg-[#161920] border border-[#232732] rounded-xl p-5 space-y-4">
-        <div className="flex items-center gap-2 border-b border-[#232732] pb-3">
-          <CurrencyInr size={18} className="text-[#00F5D4]" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-white">
+    <motion.form 
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      onSubmit={handleSave} 
+      className="space-y-5"
+    >
+      <div className="bg-card-panel border border-border-divider rounded-xl p-5 space-y-4">
+        <div className="flex items-center gap-2 border-b border-border-divider pb-3">
+          <CurrencyInr size={18} className="text-primary-cyan" />
+          <h2 className="font-heading font-bold text-xs uppercase tracking-wider text-main">
             Base Hourly Station Rates
           </h2>
         </div>
@@ -62,18 +68,18 @@ export default function ConsoleRatesSettings() {
           {Object.keys(pricing.modes).map((mode) => (
             <div
               key={mode}
-              className="bg-[#0D0E12] border border-[#232732] rounded-lg p-3 flex items-center justify-between focus-within:border-[#00F5D4]/60 transition-colors"
+              className="bg-app-bg border border-border-divider rounded-lg p-3 flex items-center justify-between focus-within:border-primary-cyan/60 transition-colors"
             >
-              <label className="text-xs text-zinc-300 font-medium uppercase tracking-wider">
+              <label className="font-mono text-xs text-sub uppercase">
                 {mode} Mode
               </label>
-              <div className="flex items-center gap-1.5 w-28 bg-[#161920] border border-[#232732] rounded-md px-2.5 py-1">
-                <span className="text-zinc-500 text-xs font-bold">₹</span>
+              <div className="flex items-center gap-1.5 w-28 bg-card-panel border border-border-divider rounded-md px-2.5 py-1">
+                <span className="font-mono text-muted text-xs font-bold">₹</span>
                 <input
                   type="number"
                   value={pricing.modes[mode]}
                   onChange={(e) => handleChange("modes", mode, e.target.value)}
-                  className="w-full bg-transparent text-white font-bold outline-none text-xs text-right"
+                  className="w-full bg-transparent font-mono text-main font-bold outline-none text-xs text-right"
                   min="0"
                 />
               </div>
@@ -82,43 +88,41 @@ export default function ConsoleRatesSettings() {
         </div>
       </div>
 
-      {/* Addons Section */}
-      <div className="bg-[#161920] border border-[#232732] rounded-xl p-5 space-y-4">
-        <div className="flex items-center gap-2 border-b border-[#232732] pb-3">
-          <GameController size={18} className="text-[#00F5D4]" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-white">
+      <div className="bg-card-panel border border-border-divider rounded-xl p-5 space-y-4">
+        <div className="flex items-center gap-2 border-b border-border-divider pb-3">
+          <GameController size={18} className="text-primary-cyan" />
+          <h2 className="font-heading font-bold text-xs uppercase tracking-wider text-main">
             Peripheral Add-ons
           </h2>
         </div>
 
-        <div className="bg-[#0D0E12] border border-[#232732] rounded-lg p-3 flex items-center justify-between focus-within:border-[#00F5D4]/60 transition-colors">
-          <label className="text-xs text-zinc-300 font-medium uppercase tracking-wider">
+        <div className="bg-app-bg border border-border-divider rounded-lg p-3 flex items-center justify-between focus-within:border-primary-cyan/60 transition-colors">
+          <label className="font-mono text-xs text-sub uppercase">
             Extra Controller / Pad
           </label>
-          <div className="flex items-center gap-1.5 w-28 bg-[#161920] border border-[#232732] rounded-md px-2.5 py-1">
-            <span className="text-zinc-500 text-xs font-bold">₹</span>
+          <div className="flex items-center gap-1.5 w-28 bg-card-panel border border-border-divider rounded-md px-2.5 py-1">
+            <span className="font-mono text-muted text-xs font-bold">₹</span>
             <input
               type="number"
               value={pricing.addons.extraController}
               onChange={(e) => handleChange("addons", "extraController", e.target.value)}
-              className="w-full bg-transparent text-white font-bold outline-none text-xs text-right"
+              className="w-full bg-transparent font-mono text-main font-bold outline-none text-xs text-right"
               min="0"
             />
           </div>
         </div>
       </div>
 
-      {/* Save Action */}
       <div className="flex justify-end pt-2">
         <button
           type="submit"
           disabled={saving}
-          className="px-5 py-2.5 bg-[#00F5D4] text-[#0D0E12] font-bold uppercase tracking-wider text-xs rounded-lg hover:bg-[#00F5D4]/90 transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+          className="px-5 py-2.5 bg-primary-cyan text-app-bg font-mono font-bold uppercase tracking-wider text-xs rounded-lg hover:bg-primary-cyan/90 transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer"
         >
-          <FloppyDisk size={16} />
-          <span>{saving ? "Saving Changes..." : "Save Configuration"}</span>
+          {saving ? <Loader variant="spinner" className="py-0 h-4 w-4" /> : <FloppyDisk size={16} />}
+          <span>{saving ? "Saving..." : "Save Configuration"}</span>
         </button>
       </div>
-    </form>
+    </motion.form>
   );
 }
