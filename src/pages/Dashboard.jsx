@@ -5,7 +5,7 @@ import StartSessionModal from "../components/ui/StartSessionModal";
 import CheckoutModal from "../components/ui/CheckoutModal";
 import ExtendModal from "../components/ui/ExtendModal";
 import { useTimers } from "../context/TimerContext";
-import { PiLightning, PiCheckCircle } from "react-icons/pi";
+import { Lightning, CheckCircle } from "@phosphor-icons/react";
 
 export default function Dashboard() {
   const { screens, startSession, extendSession, checkoutSession, loading } = useTimers();
@@ -65,7 +65,7 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <span className="w-2 h-2 rounded-full bg-available"></span>
-            <span className="font-mono text-[11px] text-muted uppercase tracking-widest font-medium">
+            <span className="font-mono text-[11px] text-muted uppercase tracking-widest font-bold">
               Live Floor
             </span>
           </div>
@@ -80,16 +80,20 @@ export default function Dashboard() {
         {/* Quick Metrics */}
         <div className="flex items-center gap-3 self-start md:self-auto">
           <div className="bg-card-panel border border-border-divider rounded-lg px-4 py-2.5 flex items-center gap-3">
-            <PiLightning className="text-primary-cyan text-lg shrink-0" />
+            <div className="p-1.5 rounded-md bg-primary-cyan/10 text-primary-cyan">
+              <Lightning size={18} weight="bold" />
+            </div>
             <div>
-              <span className="block font-mono text-[10px] text-muted uppercase tracking-wider">Active</span>
+              <span className="block font-mono text-[10px] text-muted uppercase tracking-wider font-bold">Active</span>
               <span className="font-mono text-sm font-bold text-main">{activeCount} / {screens.length}</span>
             </div>
           </div>
           <div className="bg-card-panel border border-border-divider rounded-lg px-4 py-2.5 flex items-center gap-3">
-            <PiCheckCircle className="text-available text-lg shrink-0" />
+            <div className="p-1.5 rounded-md bg-available/10 text-available">
+              <CheckCircle size={18} weight="bold" />
+            </div>
             <div>
-              <span className="block font-mono text-[10px] text-muted uppercase tracking-wider">Available</span>
+              <span className="block font-mono text-[10px] text-muted uppercase tracking-wider font-bold">Available</span>
               <span className="font-mono text-sm font-bold text-main">{availableCount} Free</span>
             </div>
           </div>
