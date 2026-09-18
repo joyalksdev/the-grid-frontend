@@ -23,7 +23,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <div className="bg-[#0D0E12] text-[#F8FAFC] min-h-screen flex flex-col font-mono selection:bg-[#00F5D4]/30 selection:text-[#00F5D4]">
+    <div className="bg-app-bg text-main min-h-screen flex flex-col font-body selection:bg-primary-cyan/30 selection:text-primary-cyan">
       <Navbar />
 
       <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
