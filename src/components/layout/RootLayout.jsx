@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import Lenis from "lenis";
+import ScrollToTop from "../common/ScrollToTop";
 
 export default function RootLayout() {
   useEffect(() => {
@@ -28,6 +29,8 @@ export default function RootLayout() {
       <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
         <Outlet />
       </main>
+
+      <ScrollToTop />
 
       <Footer />
     </div>
