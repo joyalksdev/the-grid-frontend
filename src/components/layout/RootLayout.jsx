@@ -1,17 +1,15 @@
-// src/components/layout/RootLayout.jsx
-
 import React, { useEffect } from "react";
-import Navbar from "../layout/Navbar";
-import Footer from "../layout/Footer";
 import { Outlet } from "react-router-dom";
-import Lenis from "lenis"; // Updated package import
+import Navbar from "./Navbar";
+import Footer from "./Footer";
+import Lenis from "lenis";
 
-const RootLayout = () => {
+export default function RootLayout() {
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 0.6,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true
+      smoothWheel: true,
     });
 
     function raf(time) {
@@ -24,14 +22,14 @@ const RootLayout = () => {
   }, []);
 
   return (
-    <div className="bg-app-bg text-main min-h-screen">
+    <div className="bg-[#0D0E12] text-[#F8FAFC] min-h-screen flex flex-col font-mono selection:bg-[#00F5D4]/30 selection:text-[#00F5D4]">
       <Navbar />
-      <main className="max-w-[83rem] mx-auto px-4 md:px-8 pt-24 pb-12 min-h-screen">
+
+      <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
         <Outlet />
       </main>
+
       <Footer />
     </div>
   );
-};
-
-export default RootLayout;
+}
