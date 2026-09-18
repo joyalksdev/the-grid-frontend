@@ -1,15 +1,22 @@
-// src/App.jsx
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { TimerProvider } from "./context/TimerContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+
 import RootLayout from "./components/layout/RootLayout";
+import SettingsLayout from "./components/layout/SettingsLayout";
+
 import Dashboard from "./pages/Dashboard";
 import Activity from "./pages/Activity";
 import Pricing from "./pages/Pricing";
+import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
+
+import ConsoleRatesSettings from "./pages/settings/ConsoleRatesSettings";
+import SecuritySettings from "./pages/settings/SecuritySettings";
+import { SocketProvider } from "./context/SocketContext";
 
 function FullScreenLoader() {
   return (
@@ -25,7 +32,7 @@ function AuthenticatedAuthRoute() {
   return isAuthenticated ? <Navigate to="/" replace /> : <Auth />;
 }
 
-const App = () => {
+export default function App() {
   return (
     <AuthProvider>
       <Router>
@@ -37,14 +44,26 @@ const App = () => {
           <Route element={<ProtectedRoute />}>
             <Route
               element={
-                <TimerProvider>
-                  <RootLayout />
-                </TimerProvider>
+                <SocketProvider>
+                  <TimerProvider>
+                    <RootLayout />
+                  </TimerProvider>
+                </SocketProvider>
               }
             >
               <Route index element={<Dashboard />} />
               <Route path="/activity" element={<Activity />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/profile" element={<Profile />} />
+
+              {/* Nested Admin System Settings Routes */}
+              <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+                <Route path="/settings" element={<SettingsLayout />}>
+                  <Route index element={<Navigate to="/settings/rates" replace />} />
+                  <Route path="rates" element={<ConsoleRatesSettings />} />
+                  <Route path="security" element={<SecuritySettings />} />
+                </Route>
+              </Route>
             </Route>
           </Route>
 
@@ -61,10 +80,10 @@ const App = () => {
             background: "#161920",
             border: "1px solid #232732",
             color: "#F8FAFC",
-            fontFamily: '"Rajdhani", sans-serif',
+            fontFamily: '"Rajdhani", monospace',
             letterSpacing: "0.05em",
             textTransform: "uppercase",
-            fontSize: "14px",
+            fontSize: "13px",
             fontWeight: "600",
           },
           success: {
@@ -79,6 +98,4 @@ const App = () => {
       />
     </AuthProvider>
   );
-};
-
-export default App;
+}
