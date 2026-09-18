@@ -72,30 +72,36 @@ export default function App() {
         </Routes>
       </Router>
 
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: "#161920",
-            border: "1px solid #232732",
-            color: "#F8FAFC",
-            fontFamily: '"Rajdhani", monospace',
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
-            fontSize: "13px",
-            fontWeight: "600",
-          },
-          success: {
-            iconTheme: { primary: "#00F5D4", secondary: "#0D0E12" },
-            style: { border: "1px solid rgba(0, 245, 212, 0.3)" },
-          },
-          error: {
-            iconTheme: { primary: "#FF477E", secondary: "#0D0E12" },
-            style: { border: "1px solid rgba(255, 71, 126, 0.3)" },
-          },
-        }}
-      />
-    </AuthProvider>
+<Toaster
+  position="top-center"
+  containerStyle={{
+    top: 80, 
+    right: 20,
+  }}
+  toastOptions={{
+    duration: 4000,
+    style: {
+      background: "rgba(18, 20, 26, 0.7)", // Darker, highly transparent base
+      backdropFilter: "blur(20px) saturate(180%)", // Strong iOS-style frosted glass
+      WebkitBackdropFilter: "blur(20px) saturate(180%)",
+      border: "1px solid rgba(255, 255, 255, 0.06)", // Micro-border for edge definition
+      color: "#F8FAFC",
+      fontFamily: '"Rajdhani", monospace',
+      letterSpacing: "0.06em",
+      textTransform: "uppercase",
+      fontSize: "12px",
+      fontWeight: "700",
+      padding: "10px 18px 10px 14px", // Compact padding, tighter on the left near the icon
+      borderRadius: "18px", // Deep "squircle" radius matching the reference image
+      boxShadow: "0 10px 40px rgba(0, 0, 0, 0.25)", // Deep ambient shadow to lift it off the UI
+    },
+    success: {
+      iconTheme: { primary: "#00F5D4", secondary: "#12141A" },
+    },
+    error: {
+      iconTheme: { primary: "#FF477E", secondary: "#12141A" },
+    },
+  }}
+/>    </AuthProvider>
   );
 }
