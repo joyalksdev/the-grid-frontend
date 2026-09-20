@@ -4,8 +4,9 @@ import ScreenCard from "../components/ui/ScreenCard";
 import StartSessionModal from "../components/ui/StartSessionModal";
 import CheckoutModal from "../components/ui/CheckoutModal";
 import ExtendModal from "../components/ui/ExtendModal";
+import Loader from "../components/ui/Loader";
 import { useTimers } from "../context/TimerContext";
-import { Lightning, CheckCircle } from "@phosphor-icons/react";
+import { PiLightning, PiCheckCircle } from "react-icons/pi";
 
 export default function Dashboard() {
   const { screens, startSession, extendSession, checkoutSession, loading } = useTimers();
@@ -50,68 +51,80 @@ export default function Dashboard() {
   const activeCount = screens.filter((s) => s.status === "occupied").length;
   const availableCount = screens.length - activeCount;
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center font-mono text-xs text-muted uppercase animate-pulse">
-        Syncing floor state with server...
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       {/* Header & High-Level Metric Bar */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-border-divider">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="w-2 h-2 rounded-full bg-available"></span>
-            <span className="font-mono text-[11px] text-muted uppercase tracking-widest font-bold">
-              Live Floor
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-available opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-available"></span>
+            </span>
+            <span className="font-mono text-xs text-sub uppercase tracking-widest font-semibold">
+              Live Arena Floor
             </span>
           </div>
-          <h1 className="font-heading font-black text-2xl sm:text-3xl text-main uppercase tracking-tight">
+          <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-main tracking-wide">
             Station Status
           </h1>
           <p className="text-sub text-xs sm:text-sm mt-1 max-w-xl font-body">
-            Keep track of active sessions, available stations, and time remaining.
+            Monitor active sessions, available gaming stations, and remaining session times in real-time.
           </p>
         </div>
 
         {/* Quick Metrics */}
         <div className="flex items-center gap-3 self-start md:self-auto">
-          <div className="bg-card-panel border border-border-divider rounded-lg px-4 py-2.5 flex items-center gap-3">
-            <div className="p-1.5 rounded-md bg-primary-cyan/10 text-primary-cyan">
-              <Lightning size={18} weight="bold" />
+          <div className="bg-card-panel border border-border-divider rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-xs min-w-[130px]">
+            <div className="p-2 rounded-lg bg-occupied/10 text-occupied">
+              <PiLightning className="text-lg" />
             </div>
             <div>
-              <span className="block font-mono text-[10px] text-muted uppercase tracking-wider font-bold">Active</span>
-              <span className="font-mono text-sm font-bold text-main">{activeCount} / {screens.length}</span>
+              <span className="block font-mono text-[10px] text-sub uppercase tracking-wider font-semibold">
+                In Use
+              </span>
+              <span className="font-mono text-base font-bold text-main tabular-nums">
+                {loading ? "..." : `${activeCount} / ${screens.length}`}
+              </span>
             </div>
           </div>
-          <div className="bg-card-panel border border-border-divider rounded-lg px-4 py-2.5 flex items-center gap-3">
-            <div className="p-1.5 rounded-md bg-available/10 text-available">
-              <CheckCircle size={18} weight="bold" />
+
+          <div className="bg-card-panel border border-border-divider rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-xs min-w-[130px]">
+            <div className="p-2 rounded-lg bg-available/10 text-available">
+              <PiCheckCircle className="text-lg" />
             </div>
             <div>
-              <span className="block font-mono text-[10px] text-muted uppercase tracking-wider font-bold">Available</span>
-              <span className="font-mono text-sm font-bold text-main">{availableCount} Free</span>
+              <span className="block font-mono text-[10px] text-sub uppercase tracking-wider font-semibold">
+                Available
+              </span>
+              <span className="font-mono text-base font-bold text-main tabular-nums">
+                {loading ? "..." : `${availableCount} Free`}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Screen Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {screens.map((screen) => (
-          <ScreenCard
-            key={screen.screenId || screen.id || screen._id}
-            screen={screen}
-            onStartSession={handleStartPrompt}
-            onCheckoutPrompt={handleCheckoutPrompt}
-            onExtendPrompt={handleExtendPrompt}
-          />
-        ))}
-      </div>
+      {/* Screen Cards Grid OR Skeleton Loaders */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Loader key={i} variant="skeleton-card" className="min-h-72" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {screens.map((screen) => (
+            <ScreenCard
+              key={screen.screenId || screen.id || screen._id}
+              screen={screen}
+              onStartSession={handleStartPrompt}
+              onCheckoutPrompt={handleCheckoutPrompt}
+              onExtendPrompt={handleExtendPrompt}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Modals */}
       <StartSessionModal

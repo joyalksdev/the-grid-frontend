@@ -1,31 +1,31 @@
-// src/components/Footer.jsx
+// src/components/layout/Footer.jsx
 import React from "react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="w-full bg-app-bg border-t border-border-divider/60 py-5 px-5 5md:px-8 mt-auto">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-
-        {/* Brand & Copyright */}
-        <div className="flex items-center gap-2 select-none text-muted font-mono text-xs uppercase">
-          <span className="text-sub font-semibold">THE GRID</span>
-          <span className="text-border-divider">|</span>
+    <footer className="w-full mt-auto bg-app-bg border-t border-border-divider pb-[env(safe-area-inset-bottom)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col items-center gap-2 text-xs text-sub sm:flex-row sm:justify-between sm:gap-4">
+        <p className="select-none">
+          <span translate="no" className="font-semibold text-main">
+            The Grid
+          </span>
+          <span aria-hidden="true" className="mx-2 text-border-divider">
+            |
+          </span>
           <span>&copy; {currentYear}</span>
-        </div>
+        </p>
 
-        {/* Clean Static Status Badge */}
-        <div className="flex items-center gap-2 text-muted text-[11px] font-mono">
-          <span className="w-1.5 h-1.5 rounded-full bg-available"></span>
-          <span className="uppercase tracking-wider">Lounge Online</span>
-        </div>
+        <p className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full bg-available"
+          />
+          <span>Lounge Online</span>
+        </p>
 
-        {/* Tech Spec */}
-        <div className="flex items-center gap-1.5 font-mono text-xs uppercase text-muted">
-          <span>STAFF PANEL</span>
-        </div>
-
+        <p>Staff Panel</p>
       </div>
     </footer>
   );

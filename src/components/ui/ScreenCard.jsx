@@ -1,127 +1,281 @@
 // src/components/ui/ScreenCard.jsx
-import { useState, useEffect } from "react";
-import { PiPlusCircle, PiClock } from "react-icons/pi";
+import { useState, useEffect, useRef } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  PiClock,
+  PiBellRinging,
+  PiGameController,
+  PiPlus,
+} from "react-icons/pi";
 import { playTimerAlertSound } from "../../utils/audioAlert";
 
-export default function ScreenCard({ screen, onStartSession, onCheckoutPrompt, onExtendPrompt }) {
+const WARNING_MS = 10 * 60 * 1000;
+
+const FOCUS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-card-panel";
+
+const BTN_BASE = `flex h-11 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold cursor-pointer touch-manipulation transition-colors duration-150 motion-reduce:transition-none ${FOCUS}`;
+const BTN_PRIMARY = `${BTN_BASE} bg-main text-app-bg hover:bg-main/90`;
+const BTN_OUTLINE = `${BTN_BASE} border border-border-divider text-main hover:border-sub`;
+
+function formatRemaining(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+}
+
+const BADGE_STYLES = {
+  available: "border-available/30 bg-available/10 text-available",
+  running: "border-occupied/30 bg-occupied/10 text-occupied",
+  warning: "border-warning/30 bg-warning/10 text-warning",
+  timeup: "border-occupied/40 bg-occupied/15 text-occupied",
+};
+
+const BADGE_LABELS = {
+  available: "Available",
+  running: "In Use",
+  warning: "Ending Soon",
+  timeup: "Time Up",
+};
+
+export default function ScreenCard({
+  screen,
+  onStartSession,
+  onCheckoutPrompt,
+  onExtendPrompt,
+}) {
   const { name, type, status, activeSession } = screen;
   const screenIdentifier = screen.screenId || screen.id || screen._id;
 
-  const [timeLeft, setTimeLeft] = useState("");
-  const [isWarning, setIsWarning] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const [, setTick] = useState(0);
+  const sawRunning = useRef(false); // true once we've watched this session count down
+  const alertedFor = useRef(null); // endTime we've already played the alert for
 
+  const isOccupied = status === "occupied";
+  const endTime = activeSession?.endTime;
+
+  // 1s ticker. Depends on endTime (a string) so polling refreshes that hand us
+  // a new activeSession object don't restart the timer or replay the alert.
   useEffect(() => {
-    if (status !== "occupied" || !activeSession?.endTime) return;
+    if (!isOccupied || !endTime) {
+      sawRunning.current = false;
+      return;
+    }
 
-    const timer = setInterval(() => {
-      const difference = new Date(activeSession.endTime) - new Date();
+    const end = new Date(endTime).getTime();
 
-      if (difference <= 0) {
-        setTimeLeft("00:00:00");
-        setIsWarning(true);
-        playTimerAlertSound(); // Play audio alert when time runs out
-        clearInterval(timer);
-        return;
+    const tick = () => {
+      setTick((t) => t + 1);
+
+      if (end > Date.now()) {
+        sawRunning.current = true;
+        return false;
       }
 
-      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((difference / 1000 / 60) % 60);
-      const seconds = Math.floor((difference / 1000) % 60);
+      // Only alert when time runs out while the card is on screen
+      if (sawRunning.current && alertedFor.current !== endTime) {
+        alertedFor.current = endTime;
+        playTimerAlertSound();
+      }
+      return true;
+    };
 
-      setIsWarning(hours === 0 && minutes < 10);
-
-      setTimeLeft(
-        `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-      );
+    if (tick()) return;
+    const id = setInterval(() => {
+      if (tick()) clearInterval(id);
     }, 1000);
+    return () => clearInterval(id);
+  }, [isOccupied, endTime]);
 
-    return () => clearInterval(timer);
-  }, [status, activeSession]);
+  // Derived state
+  const endMs = endTime ? new Date(endTime).getTime() : 0;
+  const msLeft = isOccupied ? Math.max(0, endMs - Date.now()) : 0;
+  const timeUp = isOccupied && msLeft === 0;
+  const isWarning = isOccupied && !timeUp && msLeft <= WARNING_MS;
+  const state = !isOccupied
+    ? "available"
+    : timeUp
+    ? "timeup"
+    : isWarning
+    ? "warning"
+    : "running";
+
+  const startMs = activeSession?.startTime
+    ? new Date(activeSession.startTime).getTime()
+    : null;
+  const totalMs =
+    startMs && endMs > startMs
+      ? endMs - startMs
+      : activeSession?.duration
+      ? activeSession.duration * 60 * 1000
+      : null;
+  const progress = totalMs ? Math.min(1, Math.max(0, msLeft / totalMs)) : null;
+
+  const timerColor = timeUp
+    ? "text-occupied"
+    : isWarning
+    ? "text-warning"
+    : "text-primary-cyan";
+  const barColor = isWarning ? "bg-warning" : "bg-primary-cyan";
 
   return (
-    <div className="bg-card-panel border border-border-divider rounded-xl p-5 flex flex-col justify-between min-h-[320px] hover:border-sub/40 transition-colors shadow-sm">
-      {/* Station Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-border-divider/50">
-        <div>
-          <span className="font-mono text-[10px] text-muted uppercase tracking-wider block">
-            {type}
-          </span>
-          <h3 className="font-heading font-bold text-xl text-main tracking-wide">
+    <article
+      className={`relative flex min-h-72 flex-col rounded-xl border bg-card-panel p-4 transition-colors duration-150 motion-reduce:transition-none sm:p-5 ${
+        timeUp
+          ? "border-occupied/50"
+          : "border-border-divider hover:border-sub/40"
+      }`}
+    >
+      {/* Time-up: border pulses 4x (~4.8s) then settles to a solid red border */}
+      {timeUp && !reduceMotion && (
+        <motion.span
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-px rounded-xl border-2 border-occupied"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{ duration: 1.2, repeat: 3, ease: "easeInOut" }}
+        />
+      )}
+
+      {/* Screen-reader announcement */}
+      <p role="status" className="sr-only">
+        {timeUp ? `Time is up on ${name}.` : ""}
+      </p>
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-xs text-sub">{type}</p>
+          <h3 className="truncate font-heading text-xl font-bold tracking-wide text-main">
             {name}
           </h3>
         </div>
 
-        {status === "occupied" ? (
-          <span className={`px-2.5 py-1 rounded-md font-mono text-[11px] uppercase tracking-wider font-semibold border ${
-            isWarning
-              ? "bg-warning/10 text-warning border-warning/30"
-              : "bg-occupied/10 text-occupied border-occupied/30"
-          }`}>
-            {isWarning ? "Ending Soon" : "In Use"}
-          </span>
-        ) : (
-          <span className="bg-available/10 text-available border border-available/30 px-2.5 py-1 rounded-md font-mono text-[11px] uppercase tracking-wider font-semibold">
-            Available
-          </span>
-        )}
+        <span
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium ${BADGE_STYLES[state]}`}
+        >
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full bg-current"
+          />
+          {BADGE_LABELS[state]}
+        </span>
       </div>
 
-      {/* Timer & Details Block */}
-      <div className="my-6 flex-grow flex flex-col justify-center">
-        {status === "occupied" ? (
-          <div className="space-y-4">
-            <div className="text-center py-2 bg-app-bg/50 border border-border-divider/60 rounded-lg">
-              <span className="font-mono text-[10px] uppercase text-muted tracking-wider block mb-0.5">Time Remaining</span>
-              <span className={`font-mono text-3xl font-bold tracking-wider ${isWarning ? "text-warning" : "text-primary-cyan"}`}>
-                {timeLeft || "00:00:00"}
-              </span>
+      {/* Body */}
+      {isOccupied ? (
+        <div className="mt-5 flex flex-1 flex-col justify-center gap-4">
+          <div>
+            <div className="flex h-5 items-center gap-1.5">
+              {timeUp ? (
+                <>
+                  <motion.span
+                    aria-hidden="true"
+                    className="inline-flex text-occupied"
+                    style={{ transformOrigin: "50% 0%" }}
+                    animate={
+                      reduceMotion
+                        ? undefined
+                        : { rotate: [0, -16, 14, -10, 8, -4, 0] }
+                    }
+                    transition={{ duration: 1, repeat: 2, repeatDelay: 0.5 }}
+                  >
+                    <PiBellRinging className="text-base" />
+                  </motion.span>
+                  <span className="text-xs font-medium text-occupied">
+                    Session Ended
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs text-sub">Time Remaining</span>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-              <div className="bg-app-bg/40 p-2.5 rounded border border-border-divider/40">
-                <span className="text-muted block font-mono uppercase text-[9px] tracking-wider">Player</span>
-                <span className="font-body font-medium text-main truncate block">{activeSession?.player}</span>
+            <motion.p
+              key={timeUp ? "timeup" : "running"}
+              role="timer"
+              initial={timeUp && !reduceMotion ? { scale: 1.06 } : false}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              style={{ transformOrigin: "left center" }}
+              className={`mt-1 font-mono text-4xl font-bold tabular-nums tracking-tight ${timerColor}`}
+            >
+              {formatRemaining(msLeft)}
+            </motion.p>
+
+            {progress !== null && (
+              <div
+                aria-hidden="true"
+                className="mt-3 h-1 overflow-hidden rounded-full bg-border-divider"
+              >
+                <div
+                  className={`h-full w-full origin-left rounded-full transition-transform duration-1000 ease-linear motion-reduce:transition-none ${barColor}`}
+                  style={{ transform: `scaleX(${progress})` }}
+                />
               </div>
-              <div className="bg-app-bg/40 p-2.5 rounded border border-border-divider/40 text-right">
-                <span className="text-muted block font-mono uppercase text-[9px] tracking-wider">Mode</span>
-                <span className="font-mono text-xs text-sub">{activeSession?.mode}</span>
-              </div>
-            </div>
+            )}
           </div>
-        ) : (
-          <button
-            onClick={() => onStartSession(screenIdentifier)}
-            className="w-full py-8 border border-dashed border-border-divider hover:border-sub rounded-lg flex flex-col items-center justify-center gap-2 text-muted hover:text-main transition-colors group"
-          >
-            <PiPlusCircle className="text-3xl text-sub group-hover:text-main transition-colors" />
-            <span className="font-mono font-semibold text-xs uppercase tracking-wider">Start Session</span>
-          </button>
-        )}
-      </div>
 
-      {/* Action Controls */}
-      <div className="pt-4 border-t border-border-divider/50">
-        {status === "occupied" ? (
+          <dl className="grid grid-cols-2 gap-4 border-t border-border-divider pt-4 text-sm">
+            <div className="min-w-0">
+              <dt className="text-xs text-sub">Player</dt>
+              <dd className="truncate font-medium text-main">
+                {activeSession?.player}
+              </dd>
+            </div>
+            <div className="min-w-0 text-right">
+              <dt className="text-xs text-sub">Mode</dt>
+              <dd className="truncate font-medium text-sub">
+                {activeSession?.mode}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      ) : (
+        <div className="mt-5 flex flex-1 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-divider px-4 py-6 text-center">
+          <PiGameController
+            aria-hidden="true"
+            className="mb-1 text-2xl text-sub"
+          />
+          <p className="text-sm font-medium text-main">Ready for Player</p>
+          <p className="text-xs text-sub">Start a session to begin the timer.</p>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="mt-4">
+        {isOccupied ? (
           <div className="grid grid-cols-2 gap-2">
             <button
+              type="button"
               onClick={() => onExtendPrompt(screenIdentifier)}
-              className="flex items-center justify-center gap-1.5 border border-border-divider hover:border-sub text-sub hover:text-main py-2 rounded font-mono uppercase tracking-wider font-semibold text-xs transition-colors"
+              className={BTN_OUTLINE}
             >
-              <PiClock className="text-sm" /> Extend
+              <PiClock aria-hidden="true" className="text-base" />
+              Extend
             </button>
             <button
+              type="button"
               onClick={() => onCheckoutPrompt(screenIdentifier)}
-              className="bg-main hover:bg-main/90 text-app-bg py-2 rounded font-mono uppercase tracking-wider font-semibold text-xs transition-colors"
+              className={BTN_PRIMARY}
             >
               Checkout
             </button>
           </div>
         ) : (
-          <div className="text-center py-1 font-mono text-[11px] text-muted">
-            Ready for Player
-          </div>
+          <button
+            type="button"
+            onClick={() => onStartSession(screenIdentifier)}
+            className={`${BTN_PRIMARY} w-full`}
+          >
+            <PiPlus aria-hidden="true" className="text-base" />
+            Start Session
+          </button>
         )}
       </div>
-    </div>
+    </article>
   );
 }

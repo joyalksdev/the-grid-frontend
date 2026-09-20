@@ -1,16 +1,25 @@
 // src/components/ui/StartSessionModal.jsx
-import { useState, useEffect } from "react";
-import { PiX } from "react-icons/pi";
+import { useState, useEffect, useMemo } from "react";
 import { calculateSessionCost } from "../../config/pricing";
+import { formatINR } from "../../utils/format";
+import Sheet, { OptionCard, INPUT_CLASS, PRIMARY_BTN } from "./Sheet";
+
+const MODE_OPTIONS = [
+  { value: "SimDrive", label: "SimDrive", detail: "Wheel Setup", simOnly: true },
+  { value: "Single", label: "Single", detail: "1 Player" },
+  { value: "Dual", label: "Dual", detail: "2 Players" },
+  { value: "Big", label: "Big Mode", detail: "4 Players" },
+];
 
 export default function StartSessionModal({ screen, isOpen, onClose, onSubmit }) {
   const [player, setPlayer] = useState("");
   const [mode, setMode] = useState("Single");
   const [duration, setDuration] = useState(30);
-  const [calculatedCost, setCalculatedCost] = useState(0);
 
   const screenIdentifier = screen?.screenId || screen?.id || screen?._id;
-  const isSimDriveScreen = Number(screenIdentifier) === 1 || screen?.type?.toLowerCase().includes("hybrid");
+  const isSimDriveScreen =
+    Number(screenIdentifier) === 1 ||
+    screen?.type?.toLowerCase().includes("hybrid");
 
   useEffect(() => {
     if (isOpen && screen) {
@@ -21,22 +30,24 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
     }
   }, [isOpen, screen, isSimDriveScreen]);
 
-  useEffect(() => {
-    setCalculatedCost(calculateSessionCost(mode, duration, false));
-  }, [mode, duration]);
+  const calculatedCost = useMemo(
+    () => calculateSessionCost(mode, duration, false),
+    [mode, duration]
+  );
 
-  if (!isOpen) return null;
-
-  const getAvailableDurations = () => {
-    if (mode === "SimDrive") return [15, 60];
-    return [15, 30, 60];
-  };
+  const modes = MODE_OPTIONS.filter((o) => !o.simOnly || isSimDriveScreen);
+  const durations = mode === "SimDrive" ? [15, 60] : [15, 30, 60];
 
   const getPlayersCount = (selectedMode) => {
     if (selectedMode === "SimDrive" || selectedMode === "Single") return 1;
     if (selectedMode === "Dual") return 2;
     if (selectedMode === "Party") return 7;
     return 4;
+  };
+
+  const handleModeChange = (value) => {
+    setMode(value);
+    if (value === "SimDrive" && duration === 30) setDuration(60);
   };
 
   const handleSubmit = (e) => {
@@ -59,88 +70,104 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-app-bg/80 backdrop-blur-sm" onClick={onClose}></div>
-
-      <div className="relative w-full max-w-sm bg-card-panel border border-border-divider rounded-xl overflow-hidden shadow-2xl">
-        <div className="border-b border-border-divider px-5 py-4 flex items-center justify-between bg-app-bg/50">
-          <h3 className="font-heading font-bold text-base uppercase tracking-wider text-main">
-            Start Session: <span className="text-primary-cyan">{screen?.name}</span>
-          </h3>
-          <button onClick={onClose} className="text-sub hover:text-main text-lg transition-colors">
-            <PiX />
-          </button>
+    <Sheet
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Start Session"
+      description={screen?.name}
+      footer={
+        <button
+          type="submit"
+          form="start-session-form"
+          disabled={!calculatedCost}
+          className={PRIMARY_BTN}
+        >
+          Start Session
+        </button>
+      }
+    >
+      <form
+        id="start-session-form"
+        onSubmit={handleSubmit}
+        className="space-y-5"
+      >
+        <div>
+          <label
+            htmlFor="start-player-name"
+            className="mb-1.5 block text-sm font-medium text-main"
+          >
+            Player Name
+          </label>
+          <input
+            id="start-player-name"
+            name="player"
+            type="text"
+            autoComplete="off"
+            spellCheck={false}
+            value={player}
+            onChange={(e) => setPlayer(e.target.value)}
+            placeholder="e.g., Rahul…"
+            className={INPUT_CLASS}
+          />
+          <p className="mt-1.5 text-xs text-sub">Leave blank to use Guest.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted mb-1.5">
-              Player Name
-            </label>
-            <input
-              type="text"
-              value={player}
-              onChange={(e) => setPlayer(e.target.value)}
-              placeholder="Enter player name"
-              className="w-full bg-app-bg border border-border-divider rounded-md px-3 py-2 text-main focus:outline-none focus:border-sub font-body text-sm transition-colors placeholder:text-muted"
-            />
-          </div>
-
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted mb-1.5">
-              Gaming Mode
-            </label>
-            <select
-              value={mode}
-              onChange={(e) => {
-                setMode(e.target.value);
-                if (e.target.value === "SimDrive" && duration === 30) setDuration(60);
-              }}
-              className="w-full bg-app-bg border border-border-divider rounded-md px-3 py-2 text-main focus:outline-none focus:border-sub font-mono text-xs uppercase"
-            >
-              {isSimDriveScreen && <option value="SimDrive">SimDrive Wheel Setup</option>}
-              <option value="Single">Single (1 Player)</option>
-              <option value="Dual">Dual (2 Players)</option>
-              <option value="Big">Big Mode (4 Players)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block font-mono text-[11px] uppercase tracking-wider text-muted mb-1.5">
-              Session Time
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {getAvailableDurations().map((mins) => (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => setDuration(mins)}
-                  className={`py-2 rounded-md font-mono text-xs border transition-colors ${
-                    duration === mins
-                      ? "border-primary-cyan text-primary-cyan bg-app-bg font-bold"
-                      : "border-border-divider text-sub bg-app-bg/50 hover:border-sub"
-                  }`}
-                >
-                  {mins === 60 ? "1 Hr" : `${mins} Mins`}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-app-bg p-3.5 border border-border-divider rounded-md flex justify-between items-center my-2">
-            <span className="font-mono text-xs uppercase text-muted">Session Total</span>
-            <span className="font-mono text-xl font-bold text-available">₹{calculatedCost || 0}</span>
-          </div>
-
-          <button
-            type="submit"
-            disabled={!calculatedCost}
-            className="w-full py-2.5 bg-main disabled:opacity-50 hover:bg-main/90 text-app-bg font-mono uppercase font-bold text-xs tracking-wider rounded-md transition-colors"
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-medium text-main">
+            Gaming Mode
+          </legend>
+          <div
+            className={`grid gap-2 ${
+              modes.length === 4 ? "grid-cols-2" : "grid-cols-3"
+            }`}
           >
-            Start Session
-          </button>
-        </form>
-      </div>
-    </div>
+            {modes.map((o) => (
+              <OptionCard
+                key={o.value}
+                name="start-mode"
+                value={o.value}
+                checked={mode === o.value}
+                onChange={() => handleModeChange(o.value)}
+              >
+                <span className="text-sm font-semibold">{o.label}</span>
+                <span className="text-xs text-sub">{o.detail}</span>
+              </OptionCard>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-medium text-main">
+            Session Time
+          </legend>
+          <div
+            className={`grid gap-2 ${
+              durations.length === 2 ? "grid-cols-2" : "grid-cols-3"
+            }`}
+          >
+            {durations.map((mins) => (
+              <OptionCard
+                key={mins}
+                name="start-duration"
+                value={mins}
+                checked={duration === mins}
+                onChange={() => setDuration(mins)}
+              >
+                <span className="font-mono text-sm font-bold tabular-nums">
+                  {mins === 60 ? "1\u00A0Hr" : `${mins}\u00A0Mins`}
+                </span>
+              </OptionCard>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="flex items-center justify-between rounded-lg border border-border-divider bg-app-bg p-4">
+          <span className="text-sm text-sub">Session Total</span>
+          <span className="font-mono text-2xl font-bold tabular-nums text-available">
+            {formatINR(calculatedCost)}
+          </span>
+        </div>
+      </form>
+    </Sheet>
   );
 }
