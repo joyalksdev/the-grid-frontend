@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { User, LockKey, Eye, EyeSlash, ArrowRight, CircleNotch } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 
@@ -14,12 +14,26 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters')
 });
 
+// 16px on mobile so iOS Safari doesn't zoom on focus
+const FIELD =
+  'h-11 w-full rounded-lg border bg-app-bg pl-10 pr-3 text-base text-main placeholder:text-sub/70 transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan/40 sm:text-sm';
+const ICON =
+  'pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sub transition-colors duration-150 group-focus-within:text-primary-cyan';
+const GRID_TEXTURE = {
+  backgroundImage:
+    'linear-gradient(to right, rgba(0,246,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,246,255,0.06) 1px, transparent 1px)',
+  backgroundSize: '24px 24px',
+  WebkitMaskImage: 'radial-gradient(ellipse at center, #000 0%, transparent 70%)',
+  maskImage: 'radial-gradient(ellipse at center, #000 0%, transparent 70%)'
+};
+
 export default function Auth({ onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const { login } = useAuth();
+  const reduceMotion = useReducedMotion();
 
   const {
     register,
@@ -45,116 +59,126 @@ export default function Auth({ onLoginSuccess }) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[var(--color-app-bg)] flex items-center justify-center p-4 sm:p-6 font-['Inter'] relative overflow-hidden select-none">
-      {/* Background Soft Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-[var(--color-primary-cyan)]/5 rounded-full blur-[130px] pointer-events-none" />
+    // No select-none on the page: it breaks typing in inputs on iOS Safari
+    <main className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-app-bg p-4 font-body sm:p-6">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={GRID_TEXTURE} />
 
-      <motion.div 
-        initial={{ opacity: 0, y: 16 }}
+      <motion.div
+        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-[380px] z-10"
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 w-full max-w-sm"
       >
-        {/* Logo Header */}
-        <div className="text-center mb-6 flex flex-col items-center">
-          <motion.img 
-            initial={{ scale: 0.92, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
-            src="/logo.png" 
-            alt="The Grid Logo" 
-            className="h-16 sm:h-20 w-auto object-contain filter drop-shadow-[0_0_20px_rgba(6,214,160,0.15)]"
+        <div className="mb-6 flex justify-center">
+          <img
+            src="/logo.png"
+            alt="The Grid"
+            width={80}
+            height={80}
+            fetchPriority="high"
+            className="h-16 w-auto object-contain sm:h-20"
           />
         </div>
 
-        {/* Card Panel */}
-        <div className="bg-[var(--color-card-panel)] border border-[var(--color-border-divider)] rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+        <div className="rounded-2xl border border-border-divider bg-card-panel p-6 sm:p-8">
           <div className="mb-6">
-            <h2 className="font-['Rajdhani'] text-xl font-bold text-white tracking-wide uppercase">
+            <h1 className="font-heading text-xl font-bold uppercase tracking-wide text-main">
               Sign In
-            </h2>
-            <p className="text-xs text-[var(--color-sub)] mt-1 font-medium leading-relaxed">
+            </h1>
+            <p className="mt-1 text-sm text-sub">
               Enter your credentials to access the console.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <div>
-              <label className="block text-xs font-['Rajdhani'] font-bold text-slate-200 uppercase tracking-wider mb-1.5">
+              <label htmlFor="identifier" className="mb-1.5 block text-sm font-medium text-main">
                 Username or Email
               </label>
-              <div className="relative group">
-                <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)] group-focus-within:text-[var(--color-primary-cyan)] transition-colors" />
+              <div className="group relative">
+                <User size={18} aria-hidden="true" className={ICON} />
                 <input
+                  id="identifier"
                   type="text"
-                  placeholder="admin or email@domain.com"
+                  placeholder="e.g., admin or name@domain.com"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  aria-invalid={!!errors.identifier}
+                  aria-describedby={errors.identifier ? 'identifier-error' : undefined}
                   {...register('identifier')}
-                  className="w-full bg-[var(--color-app-bg)] border border-[var(--color-border-divider)] focus:border-[var(--color-primary-cyan)] focus:ring-1 focus:ring-[var(--color-primary-cyan)]/50 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-[var(--color-muted)] outline-none transition-all duration-200"
+                  className={`${FIELD} ${
+                    errors.identifier
+                      ? 'border-occupied'
+                      : 'border-border-divider focus-visible:border-primary-cyan'
+                  }`}
                 />
               </div>
               {errors.identifier && (
-                <motion.p 
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-[var(--color-occupied)] text-xs mt-1.5 font-medium"
-                >
+                <p id="identifier-error" role="alert" className="mt-1.5 text-xs font-medium text-occupied">
                   {errors.identifier.message}
-                </motion.p>
+                </p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-['Rajdhani'] font-bold text-slate-200 uppercase tracking-wider mb-1.5">
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-main">
                 Password
               </label>
-              <div className="relative group">
-                <LockKey size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)] group-focus-within:text-[var(--color-primary-cyan)] transition-colors" />
+              <div className="group relative">
+                <LockKey size={18} aria-hidden="true" className={ICON} />
                 <input
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   autoComplete="current-password"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
                   {...register('password')}
-                  className="w-full bg-[var(--color-app-bg)] border border-[var(--color-border-divider)] focus:border-[var(--color-primary-cyan)] focus:ring-1 focus:ring-[var(--color-primary-cyan)]/50 rounded-xl py-2.5 pl-10 pr-10 text-sm text-white placeholder-[var(--color-muted)] outline-none transition-all duration-200"
+                  className={`${FIELD} pr-11 ${
+                    errors.password
+                      ? 'border-occupied'
+                      : 'border-border-divider focus-visible:border-primary-cyan'
+                  }`}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)] hover:text-white transition-colors"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                  className="absolute right-1.5 top-1/2 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-md text-sub transition-colors duration-150 hover:text-main motion-reduce:transition-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan"
                 >
-                  {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeSlash size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
                 </button>
               </div>
               {errors.password && (
-                <motion.p 
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-[var(--color-occupied)] text-xs mt-1.5 font-medium"
-                >
+                <p id="password-error" role="alert" className="mt-1.5 text-xs font-medium text-occupied">
                   {errors.password.message}
-                </motion.p>
+                </p>
               )}
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               type="submit"
               disabled={loading}
-              className="w-full mt-3 bg-[var(--color-primary-cyan)] hover:brightness-110 active:scale-[0.98] text-[var(--color-app-bg)] font-['Rajdhani'] font-bold text-sm uppercase tracking-wider py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-[0_0_20px_rgba(6,214,160,0.18)] disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-busy={loading}
+              className="mt-2 flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-main text-sm font-semibold text-app-bg transition-colors duration-150 hover:bg-main/90 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-card-panel sm:h-11"
             >
               {loading ? (
-                <CircleNotch size={20} className="animate-spin text-[var(--color-app-bg)]" />
+                <>
+                  <CircleNotch size={18} aria-hidden="true" className="animate-spin" />
+                  <span>Signing In…</span>
+                </>
               ) : (
                 <>
                   <span>Sign In</span>
-                  <ArrowRight size={18} weight="bold" />
+                  <ArrowRight size={16} weight="bold" aria-hidden="true" />
                 </>
               )}
-            </motion.button>
+            </button>
           </form>
         </div>
       </motion.div>
-    </div>
+    </main>
   );
 }

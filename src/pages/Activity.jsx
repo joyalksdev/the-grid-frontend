@@ -1,9 +1,10 @@
+// src/pages/Activity.jsx
 import React, { useState, useEffect } from "react";
 import { CurrencyInr, Clock, MagnifyingGlass, ArrowsClockwise } from "@phosphor-icons/react";
-import { motion } from "framer-motion";
 import { logService } from "../services/logService";
 import { toast } from "react-hot-toast";
 import Loader from "../components/ui/Loader";
+import { formatINR } from "../utils/format";
 
 // Utility to format duration into hours and minutes
 const formatDuration = (val) => {
@@ -15,24 +16,99 @@ const formatDuration = (val) => {
   return m > 0 ? `${hrs}h ${m}m` : `${hrs}h`;
 };
 
-// Utility to reliably get start time
-const getStartTime = (log) => {
-  if (log.time) return log.time;
-  if (log.createdAt) return new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return "-";
+// Date & Time formatting options explicitly bound to IST (Asia/Kolkata)
+const dateFmt = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Asia/Kolkata",
+});
+
+const timeFmt = new Intl.DateTimeFormat("en-IN", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "Asia/Kolkata",
+});
+
+// Helper to extract a valid Date instance from any log timestamp field
+const getLogDate = (log) => {
+  const rawDate = log.timestamp || log.createdAt || log.startTime || log.date;
+  if (!rawDate) return null;
+  const d = new Date(rawDate);
+  return isNaN(d.getTime()) ? null : d;
 };
 
-// Utility to calculate end time based on start time + duration
+// Utility to reliably get start time in IST
+const getStartTime = (log) => {
+  if (log.time && typeof log.time === "string" && !log.time.includes("T")) {
+    return log.time; // If already a formatted string like "03:45 PM"
+  }
+  const date = getLogDate(log);
+  return date ? timeFmt.format(date) : "-";
+};
+
+// Utility to calculate end time in IST based on start time + duration
 const getEndTime = (log) => {
-  if (log.endTime) return log.endTime;
+  if (log.endTime && typeof log.endTime === "string" && !log.endTime.includes("T")) {
+    return log.endTime;
+  }
+  const startDate = getLogDate(log);
   const mins = parseInt(log.duration || log.durationMins || 0, 10);
-  if (log.createdAt && !isNaN(mins)) {
-    const start = new Date(log.createdAt);
-    const end = new Date(start.getTime() + mins * 60000);
-    return end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  if (startDate && !isNaN(mins)) {
+    const endDate = new Date(startDate.getTime() + mins * 60000);
+    return timeFmt.format(endDate);
   }
   return "-";
 };
+
+// Utility to get formatted date in IST
+const getDate = (log) => {
+  const date = getLogDate(log);
+  return date ? dateFmt.format(date) : "";
+};
+
+const shortId = (log, n) => {
+  const idStr = String(log.logId || log.id || log._id || "");
+  return idStr ? idStr.slice(-n) : "-";
+};
+
+const getStation = (log) => log.screen || log.screenName || "Station";
+const getPayment = (log) => log.payment || log.paymentType || "Cash";
+const getAmount = (log) => log.cost || log.finalCost || 0;
+
+function EmptyState({ searchTerm, onClear }) {
+  return (
+    <div className="px-6 py-14 text-center">
+      <p className="text-sm font-medium text-main">
+        {searchTerm ? `No results for “${searchTerm}”` : "No session logs yet."}
+      </p>
+      {searchTerm && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-3 cursor-pointer rounded-md text-sm font-medium text-primary-cyan hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan"
+        >
+          Clear Search
+        </button>
+      )}
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, tone, label, value }) {
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-border-divider bg-card-panel p-4">
+      <span className={`grid size-11 shrink-0 place-items-center rounded-lg ${tone}`}>
+        <Icon size={22} weight="fill" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs text-sub">{label}</p>
+        <p className="truncate font-mono text-2xl font-bold tabular-nums text-main">{value}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function Activity() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,7 +124,7 @@ export default function Activity() {
     try {
       if (isManualRefresh) setIsRefreshing(true);
       else setLoading(true);
-      
+
       const data = await logService.getLogs();
       setActivities(Array.isArray(data) ? data : data.logs || []);
     } catch (err) {
@@ -59,206 +135,182 @@ export default function Activity() {
     }
   };
 
+  const term = searchTerm.trim().toLowerCase();
   const filteredLogs = activities.filter((log) => {
-    const player = log.player || "";
-    const logId = log.id || log._id || "";
-    const screen = log.screen || log.screenName || "";
+    const player = String(log.player || "");
+    const logId = String(log.logId || log.id || log._id || "");
+    const screen = String(getStation(log) || "");
 
     return (
-      player.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      logId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      screen.toLowerCase().includes(searchTerm.toLowerCase())
+      player.toLowerCase().includes(term) ||
+      logId.toLowerCase().includes(term) ||
+      screen.toLowerCase().includes(term)
     );
   });
 
-  const totalRevenue = activities.reduce((sum, current) => sum + Number(current.cost || current.finalCost || 0), 0);
+  const totalRevenue = activities.reduce((sum, current) => sum + Number(getAmount(current) || 0), 0);
   const aggregateSessions = activities.length;
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
+    <div className="space-y-6">
       {/* Header */}
-      <div className="pb-5 border-b border-border-divider flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+      <div className="flex flex-col justify-between gap-5 border-b border-border-divider pb-5 sm:flex-row sm:items-end">
         <div>
-          <span className="font-mono text-[10px] text-muted uppercase tracking-widest font-bold block mb-1">
-            System Operations
-          </span>
-          <h1 className="font-heading font-black text-2xl sm:text-3xl text-main uppercase tracking-tight">
+          <h1 className="font-heading text-2xl font-extrabold tracking-wide text-main sm:text-3xl">
             Session Logs
           </h1>
-          <p className="font-body text-xs text-sub mt-1 max-w-xl">
+          <p className="mt-1 max-w-xl text-xs text-sub sm:text-sm">
             Review completed sessions, player history, and total revenue collected.
           </p>
         </div>
 
-        {/* Search & Refresh Controls */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-sub text-sm" />
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative flex-1 sm:w-64 sm:flex-none">
+            <MagnifyingGlass
+              size={16}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sub"
+            />
+            <label htmlFor="log-search" className="sr-only">
+              Search session logs
+            </label>
             <input
-              type="text"
-              placeholder="Search player, station or ID..."
+              id="log-search"
+              name="search"
+              type="search"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Search player, station or ID…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-card-panel border border-border-divider rounded-lg pl-9 pr-3 py-2.5 font-mono text-xs text-main placeholder:text-muted focus:outline-none focus:border-primary-cyan/50 transition-colors"
+              className="h-11 w-full rounded-lg border border-border-divider bg-card-panel pl-9 pr-3 text-base text-main placeholder:text-sub/70 transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:border-primary-cyan focus-visible:ring-2 focus-visible:ring-primary-cyan/40 sm:h-10 sm:text-sm"
             />
           </div>
-          
+
           <button
+            type="button"
             onClick={() => fetchLogs(true)}
             disabled={loading || isRefreshing}
-            className="shrink-0 p-2.5 rounded-lg bg-card-panel border border-border-divider hover:bg-app-bg text-sub hover:text-primary-cyan hover:border-primary-cyan/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed group outline-none"
-            title="Refresh Logs"
+            aria-label="Refresh logs"
+            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-lg border border-border-divider bg-card-panel text-sub transition-colors duration-150 hover:border-sub/50 hover:text-main disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan sm:size-10"
           >
-            <ArrowsClockwise 
-              size={18} 
+            <ArrowsClockwise
+              size={18}
               weight="bold"
-              className={isRefreshing ? "animate-spin text-primary-cyan" : "group-hover:rotate-180 transition-transform duration-500"} 
+              aria-hidden="true"
+              className={isRefreshing ? "animate-spin text-primary-cyan" : ""}
             />
           </button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-card-panel border border-border-divider rounded-xl p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-available/10 text-available text-xl">
-            <CurrencyInr size={24} weight="fill" />
-          </div>
-          <div>
-            <span className="font-mono text-[10px] text-muted uppercase tracking-wider block font-bold">Revenue Collected</span>
-            <h3 className="font-mono text-2xl font-bold text-main">₹{totalRevenue.toLocaleString()}</h3>
-          </div>
-        </div>
-
-        <div className="bg-card-panel border border-border-divider rounded-xl p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-primary-cyan/10 text-primary-cyan text-xl">
-            <Clock size={24} weight="fill" />
-          </div>
-          <div>
-            <span className="font-mono text-[10px] text-muted uppercase tracking-wider block font-bold">Completed Sessions</span>
-            <h3 className="font-mono text-2xl font-bold text-main">{aggregateSessions}</h3>
-          </div>
-        </div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatCard
+          icon={CurrencyInr}
+          tone="bg-available/10 text-available"
+          label="Revenue Collected"
+          value={formatINR(totalRevenue)}
+        />
+        <StatCard
+          icon={Clock}
+          tone="bg-primary-cyan/10 text-primary-cyan"
+          label="Completed Sessions"
+          value={aggregateSessions}
+        />
       </div>
 
-      {/* Logs Table */}
-      <div className="bg-card-panel border border-border-divider rounded-xl overflow-hidden shadow-sm">
+      {/* Logs */}
+      <section aria-label="Session logs" className="overflow-hidden rounded-xl border border-border-divider bg-card-panel">
         {loading && !isRefreshing ? (
           <div className="p-6">
             <Loader variant="skeleton-table" lines={5} />
           </div>
+        ) : filteredLogs.length === 0 ? (
+          <EmptyState searchTerm={searchTerm.trim()} onClear={() => setSearchTerm("")} />
         ) : (
           <>
-            {/* Mobile Cards View */}
-            <div className="block lg:hidden divide-y divide-border-divider">
-              {filteredLogs.length === 0 ? (
-                <div className="p-8 text-center font-mono text-xs text-muted uppercase">
-                  No session logs found.
-                </div>
-              ) : (
-                filteredLogs.map((log) => (
-                  <div key={log._id || log.id} className="p-4 space-y-3 hover:bg-app-bg/40 transition-colors">
-                    <div className="flex items-center justify-between font-mono text-xs border-b border-border-divider/50 pb-2">
-                      <span className="font-bold text-primary-cyan">#{log.id?.slice(-6) || log._id?.slice(-6)}</span>
-                      <span className="px-2 py-0.5 rounded bg-app-bg border border-border-divider text-[10px] uppercase text-main">
-                        {log.payment || log.paymentType}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="font-body text-sm font-bold text-main">{log.player}</span>
-                      <span className="font-mono text-sm font-bold text-available">₹{log.cost || log.finalCost}</span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 font-mono text-[10px] bg-app-bg/50 p-2 rounded-lg border border-border-divider/50">
-                      <div className="space-y-1">
-                        <span className="text-muted block uppercase">Station</span>
-                        <span className="text-sub font-bold">{log.screen || log.screenName}</span>
-                      </div>
-                      <div className="space-y-1 text-right">
-                        <span className="text-muted block uppercase">Duration</span>
-                        <span className="text-sub font-bold">{formatDuration(log.duration || log.durationMins)}</span>
-                      </div>
-                      <div className="space-y-1 col-span-2 flex justify-between border-t border-border-divider/50 pt-2 mt-1">
-                        <div>
-                          <span className="text-muted block uppercase">Start</span>
-                          <span className="text-sub">{getStartTime(log)}</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-muted block uppercase">End</span>
-                          <span className="text-sub">{getEndTime(log)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            <p role="status" className="border-b border-border-divider px-4 py-2.5 text-xs text-sub lg:px-5">
+              Showing {filteredLogs.length} of {aggregateSessions} sessions
+            </p>
 
-            {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full text-left border-collapse whitespace-nowrap">
+            {/* Mobile & tablet list */}
+            <ul className="divide-y divide-border-divider lg:hidden">
+              {filteredLogs.map((log) => (
+                <li key={log._id || log.id || log.logId} className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-main">{log.player}</p>
+                      <p className="mt-0.5 truncate text-xs text-sub">
+                        {getStation(log)} · {formatDuration(log.duration || log.durationMins)}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-mono text-sm font-bold tabular-nums text-available">
+                      {formatINR(getAmount(log))}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 text-xs text-sub">
+                    <p className="tabular-nums">
+                      {getDate(log) && `${getDate(log)} · `}
+                      {getStartTime(log)} – {getEndTime(log)}
+                    </p>
+                    <p className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-md border border-border-divider bg-app-bg px-1.5 py-0.5 font-medium uppercase text-main">
+                        {getPayment(log)}
+                      </span>
+                      <span className="font-mono">#{shortId(log, 8)}</span>
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* Desktop table */}
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full whitespace-nowrap text-left text-sm">
                 <thead>
-                  <tr className="border-b border-border-divider bg-app-bg/50 font-mono text-[11px] uppercase tracking-wider text-muted font-bold">
-                    <th className="px-5 py-4">Log ID</th>
-                    <th className="px-5 py-4">Player</th>
-                    <th className="px-5 py-4">Station & Mode</th>
-                    <th className="px-5 py-4">Start Time</th>
-                    <th className="px-5 py-4">End Time</th>
-                    <th className="px-5 py-4">Duration</th>
-                    <th className="px-5 py-4">Payment</th>
-                    <th className="px-5 py-4 text-right">Amount</th>
+                  <tr className="border-b border-border-divider bg-app-bg/50 text-xs font-medium text-sub">
+                    <th scope="col" className="px-5 py-3 font-medium">Log ID</th>
+                    <th scope="col" className="px-5 py-3 font-medium">Player</th>
+                    <th scope="col" className="px-5 py-3 font-medium">Station &amp; Mode</th>
+                    <th scope="col" className="px-5 py-3 font-medium">Start Time</th>
+                    <th scope="col" className="px-5 py-3 font-medium">End Time</th>
+                    <th scope="col" className="px-5 py-3 font-medium">Duration</th>
+                    <th scope="col" className="px-5 py-3 font-medium">Payment</th>
+                    <th scope="col" className="px-5 py-3 text-right font-medium">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-divider font-mono text-xs">
-                  {filteredLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className="text-center py-12 text-muted uppercase tracking-widest">
-                        No session logs found.
+                <tbody className="divide-y divide-border-divider tabular-nums">
+                  {filteredLogs.map((log) => (
+                    <tr key={log._id || log.id || log.logId} className="transition-colors duration-150 hover:bg-app-bg/40 motion-reduce:transition-none">
+                      <td className="px-5 py-3.5 font-mono text-xs text-sub">{log.logId || shortId(log, 8)}</td>
+                      <td className="px-5 py-3.5 font-semibold text-main">{log.player}</td>
+                      <td className="px-5 py-3.5 text-sub">{getStation(log)}</td>
+                      <td className="px-5 py-3.5 text-sub">
+                        {getStartTime(log)}
+                        {getDate(log) && <span className="block text-xs text-sub/70">{getDate(log)}</span>}
+                      </td>
+                      <td className="px-5 py-3.5 text-sub">{getEndTime(log)}</td>
+                      <td className="px-5 py-3.5 font-medium text-main">
+                        {formatDuration(log.duration || log.durationMins)}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="rounded-md border border-border-divider bg-app-bg px-2 py-1 text-xs font-medium uppercase text-main">
+                          {getPayment(log)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right font-mono font-bold text-available">
+                        {formatINR(getAmount(log))}
                       </td>
                     </tr>
-                  ) : (
-                    filteredLogs.map((log) => (
-                      <tr key={log._id || log.id} className="hover:bg-app-bg/40 transition-colors group">
-                        <td className="px-5 py-4 font-bold text-primary-cyan">
-                          {log.id?.slice(-8) || log._id?.slice(-8)}
-                        </td>
-                        <td className="px-5 py-4 font-body font-semibold text-main text-sm">
-                          {log.player}
-                        </td>
-                        <td className="px-5 py-4 text-sub font-bold">
-                          {log.screen || log.screenName}
-                        </td>
-                        <td className="px-5 py-4 text-muted group-hover:text-sub transition-colors">
-                          {getStartTime(log)}
-                        </td>
-                        <td className="px-5 py-4 text-muted group-hover:text-sub transition-colors">
-                          {getEndTime(log)}
-                        </td>
-                        <td className="px-5 py-4 text-main font-bold">
-                          {formatDuration(log.duration || log.durationMins)}
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="px-2 py-1 rounded-md bg-app-bg border border-border-divider text-[10px] uppercase font-bold text-main">
-                            {log.payment || log.paymentType}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-right font-bold text-available text-sm">
-                          ₹{log.cost || log.finalCost}
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
           </>
         )}
-      </div>
-    </motion.div>
+      </section>
+    </div>
   );
-} 
+}

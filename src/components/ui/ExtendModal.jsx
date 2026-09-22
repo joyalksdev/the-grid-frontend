@@ -3,31 +3,46 @@ import { useState, useEffect } from "react";
 import { PRICING_MATRIX, calculateSessionCost } from "../../config/pricing";
 import { formatINR } from "../../utils/format";
 import Sheet, { OptionCard, PRIMARY_BTN } from "./Sheet";
+import PriceCalculator from "./PriceCalculator";
 
 const DEFAULT_EXTENSIONS = { 15: 50, 30: 80, 60: 130 };
+const COLS = { 3: "grid-cols-3", 4: "grid-cols-4" };
 
 const getOptions = (mode) => PRICING_MATRIX[mode]?.extensions || DEFAULT_EXTENSIONS;
 
 export default function ExtendModal({ screen, isOpen, onClose, onConfirm }) {
-  const [selectedMinutes, setSelectedMinutes] = useState(30);
+  const [selectedMinutes, setSelectedMinutes] = useState(30); // minutes, or "custom"
+  const [custom, setCustom] = useState(null); // { minutes, cost } from the calculator
 
   const session = screen?.activeSession;
   const mode = session?.mode || "Single";
   const extensionOptions = getOptions(mode);
-  const additionalCost = calculateSessionCost(mode, selectedMinutes, true);
+  const optionKeys = Object.keys(extensionOptions);
+
+  const isCustom = selectedMinutes === "custom";
+  const additionalMinutes = isCustom ? custom?.minutes || 0 : selectedMinutes;
+  const additionalCost = isCustom
+    ? custom?.cost || 0
+    : calculateSessionCost(mode, selectedMinutes, true);
 
   // Start on 30 min when offered, otherwise the first available option
   useEffect(() => {
     if (!isOpen) return;
     const keys = Object.keys(getOptions(mode)).map(Number);
     setSelectedMinutes(keys.includes(30) ? 30 : keys[0]);
+    setCustom(null);
   }, [isOpen, mode]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!additionalMinutes || additionalMinutes <= 0 || !additionalCost || additionalCost <= 0) {
+      return;
+    }
+
     onConfirm({
       screenId: screen.screenId || screen.id || screen._id,
-      additionalMinutes: selectedMinutes,
+      additionalMinutes,
+      additionalCost,
     });
     onClose();
   };
@@ -41,7 +56,12 @@ export default function ExtendModal({ screen, isOpen, onClose, onConfirm }) {
         session ? `${screen.name} · ${session.player}` : screen?.name
       }
       footer={
-        <button type="submit" form="extend-form" className={PRIMARY_BTN}>
+        <button
+          type="submit"
+          form="extend-form"
+          disabled={!additionalCost || additionalCost <= 0}
+          className={PRIMARY_BTN}
+        >
           Confirm Extension
         </button>
       }
@@ -51,14 +71,14 @@ export default function ExtendModal({ screen, isOpen, onClose, onConfirm }) {
           <legend className="mb-1.5 text-sm font-medium text-main">
             Additional Duration
           </legend>
-          <div className="grid grid-cols-3 gap-2">
-            {Object.keys(extensionOptions).map((minsStr) => {
+          <div className={`grid gap-2 ${COLS[optionKeys.length + 1] || "grid-cols-4"}`}>
+            {optionKeys.map((minsStr) => {
               const mins = Number(minsStr);
               const cost = extensionOptions[mins];
 
               return (
                 <OptionCard
-                  key={mins}
+                  key={`ext-option-${mins}`}
                   name="extend-minutes"
                   value={mins}
                   checked={selectedMinutes === mins}
@@ -73,8 +93,21 @@ export default function ExtendModal({ screen, isOpen, onClose, onConfirm }) {
                 </OptionCard>
               );
             })}
+            <OptionCard
+              key="ext-option-custom"
+              name="extend-minutes"
+              value="custom"
+              checked={isCustom}
+              onChange={() => setSelectedMinutes("custom")}
+            >
+              <span className="text-sm font-semibold">Custom</span>
+            </OptionCard>
           </div>
         </fieldset>
+
+        {isCustom && (
+          <PriceCalculator mode={mode} isExtension onChange={setCustom} />
+        )}
 
         <div className="flex items-center justify-between rounded-lg border border-border-divider bg-app-bg p-4">
           <span className="text-sm text-sub">Additional Fee</span>
@@ -85,4 +118,4 @@ export default function ExtendModal({ screen, isOpen, onClose, onConfirm }) {
       </form>
     </Sheet>
   );
-} 
+}

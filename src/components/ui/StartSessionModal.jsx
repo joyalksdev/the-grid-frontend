@@ -3,18 +3,23 @@ import { useState, useEffect, useMemo } from "react";
 import { calculateSessionCost } from "../../config/pricing";
 import { formatINR } from "../../utils/format";
 import Sheet, { OptionCard, INPUT_CLASS, PRIMARY_BTN } from "./Sheet";
+import PriceCalculator from "./PriceCalculator";
 
 const MODE_OPTIONS = [
   { value: "SimDrive", label: "SimDrive", detail: "Wheel Setup", simOnly: true },
   { value: "Single", label: "Single", detail: "1 Player" },
   { value: "Dual", label: "Dual", detail: "2 Players" },
+  { value: "Triple", label: "Triple", detail: "3 Players" },
   { value: "Big", label: "Big Mode", detail: "4 Players" },
 ];
+
+const COLS = { 3: "grid-cols-3", 4: "grid-cols-4" };
 
 export default function StartSessionModal({ screen, isOpen, onClose, onSubmit }) {
   const [player, setPlayer] = useState("");
   const [mode, setMode] = useState("Single");
-  const [duration, setDuration] = useState(30);
+  const [duration, setDuration] = useState(30); // minutes, or "custom"
+  const [custom, setCustom] = useState(null); // { minutes, cost } from the calculator
 
   const screenIdentifier = screen?.screenId || screen?.id || screen?._id;
   const isSimDriveScreen =
@@ -26,41 +31,49 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
       setPlayer("");
       const defaultMode = isSimDriveScreen ? "SimDrive" : "Single";
       setMode(defaultMode);
-      setDuration(defaultMode === "SimDrive" ? 60 : 30);
+      setDuration(30);
+      setCustom(null);
     }
   }, [isOpen, screen, isSimDriveScreen]);
 
+  const isCustom = duration === "custom";
+
   const calculatedCost = useMemo(
-    () => calculateSessionCost(mode, duration, false),
-    [mode, duration]
+    () => (isCustom ? custom?.cost || 0 : calculateSessionCost(mode, duration, false)),
+    [isCustom, custom, mode, duration]
   );
+  const billedMinutes = isCustom ? custom?.minutes || 0 : duration;
 
   const modes = MODE_OPTIONS.filter((o) => !o.simOnly || isSimDriveScreen);
-  const durations = mode === "SimDrive" ? [15, 60] : [15, 30, 60];
+  const durations = [15, 30, 60];
 
   const getPlayersCount = (selectedMode) => {
     if (selectedMode === "SimDrive" || selectedMode === "Single") return 1;
     if (selectedMode === "Dual") return 2;
+    if (selectedMode === "Triple") return 3;
     if (selectedMode === "Party") return 7;
     return 4;
   };
 
   const handleModeChange = (value) => {
     setMode(value);
-    if (value === "SimDrive" && duration === 30) setDuration(60);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!calculatedCost || calculatedCost <= 0 || !billedMinutes || billedMinutes <= 0) {
+      return;
+    }
+
     const now = new Date();
-    const endTime = new Date(now.getTime() + duration * 60 * 1000);
+    const endTime = new Date(now.getTime() + billedMinutes * 60 * 1000);
 
     onSubmit({
       screenId: screenIdentifier,
       player: player.trim() || "Guest",
       mode,
       playersCount: getPlayersCount(mode),
-      duration,
+      duration: billedMinutes,
       cost: calculatedCost,
       startTime: now.toISOString(),
       endTime: endTime.toISOString(),
@@ -79,7 +92,7 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
         <button
           type="submit"
           form="start-session-form"
-          disabled={!calculatedCost}
+          disabled={!calculatedCost || calculatedCost <= 0}
           className={PRIMARY_BTN}
         >
           Start Session
@@ -118,12 +131,12 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
           </legend>
           <div
             className={`grid gap-2 ${
-              modes.length === 4 ? "grid-cols-2" : "grid-cols-3"
+              modes.length >= 4 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-3"
             }`}
           >
             {modes.map((o) => (
               <OptionCard
-                key={o.value}
+                key={`mode-option-${o.value}`}
                 name="start-mode"
                 value={o.value}
                 checked={mode === o.value}
@@ -140,14 +153,10 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
           <legend className="mb-1.5 text-sm font-medium text-main">
             Session Time
           </legend>
-          <div
-            className={`grid gap-2 ${
-              durations.length === 2 ? "grid-cols-2" : "grid-cols-3"
-            }`}
-          >
+          <div className={`grid gap-2 ${COLS[durations.length + 1]}`}>
             {durations.map((mins) => (
               <OptionCard
-                key={mins}
+                key={`dur-option-${mins}`}
                 name="start-duration"
                 value={mins}
                 checked={duration === mins}
@@ -158,8 +167,19 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
                 </span>
               </OptionCard>
             ))}
+            <OptionCard
+              key="dur-option-custom"
+              name="start-duration"
+              value="custom"
+              checked={isCustom}
+              onChange={() => setDuration("custom")}
+            >
+              <span className="text-sm font-semibold">Custom</span>
+            </OptionCard>
           </div>
         </fieldset>
+
+        {isCustom && <PriceCalculator mode={mode} onChange={setCustom} />}
 
         <div className="flex items-center justify-between rounded-lg border border-border-divider bg-app-bg p-4">
           <span className="text-sm text-sub">Session Total</span>

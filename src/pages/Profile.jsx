@@ -1,67 +1,68 @@
+// src/pages/Profile.jsx
 import React from "react";
-import { User, ShieldCheck, EnvelopeSimple, PhoneCall } from "@phosphor-icons/react";
+import { User, ShieldCheck, EnvelopeSimple, PhoneCall, IdentificationBadge } from "@phosphor-icons/react";
 import { useAuth } from "../context/AuthContext";
+
+function Row({ icon: Icon, label, children }) {
+  return (
+    <div className="flex flex-col gap-1 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6">
+      <dt className="flex shrink-0 items-center gap-2 text-sm text-sub">
+        <Icon size={16} aria-hidden="true" className="text-primary-cyan" />
+        {label}
+      </dt>
+      <dd className="min-w-0 break-words text-sm font-medium text-main sm:text-right">{children}</dd>
+    </div>
+  );
+}
 
 export default function Profile() {
   const { user, isAdmin } = useAuth();
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <div className="border-b border-border-divider pb-4">
-        <h1 className="font-heading text-xl md:text-2xl font-bold uppercase text-main tracking-wide flex items-center gap-2.5">
-          <User size={26} className="text-primary-cyan" /> Account Profile
+        <h1 className="flex items-center gap-2.5 font-heading text-xl font-bold uppercase tracking-wide text-main md:text-2xl">
+          <User size={26} aria-hidden="true" className="text-primary-cyan" /> Account Profile
         </h1>
-        <p className="font-body text-xs text-sub mt-1">
+        <p className="mt-1 text-xs text-sub sm:text-sm">
           Active system operator profile and assigned access privileges
         </p>
       </div>
 
-      <div className="bg-card-panel border border-border-divider rounded-xl p-6 space-y-6">
-        <div className="flex items-center gap-4 pb-6 border-b border-border-divider">
-          <div className="w-14 h-14 rounded-xl bg-primary-cyan/10 border border-primary-cyan/30 flex items-center justify-center text-primary-cyan font-mono text-2xl font-bold">
+      <section className="overflow-hidden rounded-xl border border-border-divider bg-card-panel">
+        <div className="flex items-center gap-4 border-b border-border-divider p-4 sm:p-6">
+          <div
+            aria-hidden="true"
+            className="grid size-14 shrink-0 place-items-center rounded-xl border border-border-divider bg-app-bg font-mono text-2xl font-bold text-primary-cyan"
+          >
             {user?.name?.[0]?.toUpperCase() || "S"}
           </div>
-          <div>
-            <h2 className="font-body font-bold text-base text-main">
-              {user?.name || "Staff Member"}
-            </h2>
-            <p className="font-mono text-xs text-sub mt-0.5">
-              Operator ID: <span className="text-main">{user?.userId || "GRID-STAFF"}</span>
-            </p>
-            <div className="mt-2">
-              <span
-                className={`inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
-                  isAdmin
-                    ? "bg-primary-cyan/10 text-primary-cyan border-primary-cyan/30"
-                    : "bg-app-bg text-sub border-border-divider"
-                }`}
-              >
-                <ShieldCheck size={12} /> {user?.role || "Staff"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-app-bg p-4 rounded-lg border border-border-divider space-y-1">
-            <span className="font-mono text-[10px] text-muted uppercase font-bold flex items-center gap-1.5">
-              <EnvelopeSimple size={14} className="text-primary-cyan" /> Email Address
-            </span>
-            <span className="font-body text-xs font-semibold text-main block truncate">
-              {user?.email || "staff@thegrid.lounge"}
-            </span>
-          </div>
-
-          <div className="bg-app-bg p-4 rounded-lg border border-border-divider space-y-1">
-            <span className="font-mono text-[10px] text-muted uppercase font-bold flex items-center gap-1.5">
-              <PhoneCall size={14} className="text-primary-cyan" /> Contact Phone
-            </span>
-            <span className="font-mono text-xs font-semibold text-main block">
-              {user?.phone || "+91 98765 43210"}
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-bold text-main">{user?.name || "Staff Member"}</h2>
+            <span
+              className={`mt-1.5 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium capitalize ${
+                isAdmin
+                  ? "border-primary-cyan/30 bg-primary-cyan/10 text-primary-cyan"
+                  : "border-border-divider bg-app-bg text-sub"
+              }`}
+            >
+              <ShieldCheck size={12} aria-hidden="true" /> {user?.role || "Staff"}
             </span>
           </div>
         </div>
-      </div>
+
+        <dl className="divide-y divide-border-divider">
+          <Row icon={IdentificationBadge} label="Operator ID">
+            <span className="font-mono">{user?.userId || "GRID-STAFF"}</span>
+          </Row>
+          <Row icon={EnvelopeSimple} label="Email Address">
+            {user?.email || <span className="text-sub">Not set</span>}
+          </Row>
+          <Row icon={PhoneCall} label="Contact Phone">
+            {user?.phone ? <span className="font-mono tabular-nums">{user.phone}</span> : <span className="text-sub">Not set</span>}
+          </Row>
+        </dl>
+      </section>
     </div>
   );
 }
