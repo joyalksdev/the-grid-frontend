@@ -8,5 +8,5 @@ const SOCKET_URL = rawUrl.replace(/\/api\/?$/, '');
 export const socket = io(SOCKET_URL, {
   autoConnect: true,
   withCredentials: true,
-  transports: ['websocket', 'polling'],
+  transports: ['polling', 'websocket'], // <-- Changed order: 'polling' first
 });

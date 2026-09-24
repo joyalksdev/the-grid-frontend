@@ -29,8 +29,8 @@ const CHIME = [
   [1174.66, 0.16],
   [880, 0.32],
 ];
-const NOTE_LENGTH = 0.14;
-const ROUNDS = 3;
+const NOTE_LENGTH = 0.18;
+const ROUNDS = 7;
 const ROUND_GAP = 0.9;
 
 /** Plays a three-round chime. Returns false if the browser blocked audio. */
