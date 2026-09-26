@@ -86,7 +86,7 @@ export default function Auth({ onLoginSuccess }) {
               Sign In
             </h1>
             <p className="mt-1 text-sm text-sub">
-              Enter your credentials to access the console.
+              Enter your credentials to access the App.
             </p>
           </div>
 

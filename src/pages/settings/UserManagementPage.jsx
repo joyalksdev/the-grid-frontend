@@ -1,4 +1,4 @@
-// client/src/pages/settings/UserManagementSettings.jsx
+// src/pages/settings/UserManagementPage.jsx
 import React, { useState, useEffect } from "react";
 import { 
   Users, 
@@ -15,7 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import { userService } from "../../services/userService";
 
-export default function UserManagementSettings() {
+export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -305,10 +305,10 @@ export default function UserManagementSettings() {
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full bg-app-bg border border-border-divider rounded-lg px-3 py-2 text-xs text-main focus:outline-none focus:border-primary-cyan"
+                    className="w-full bg-app-bg border border-border-divider rounded-lg px-3 py-2 text-xs text-main focus:outline-none focus:border-primary-cyan font-mono"
                   >
-                    <option value="operator font-mono">Operator</option>
-                    <option value="admin font-mono">Admin</option>
+                    <option value="operator">Operator</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
               </div>

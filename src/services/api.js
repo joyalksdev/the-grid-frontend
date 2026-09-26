@@ -12,12 +12,11 @@ const API = axios.create({
 API.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Update redirect route from /login to /auth
     if (error.response?.status === 401 && window.location.pathname !== '/auth') {
       window.location.href = '/auth';
     }
-    const message = error.response?.data?.error || 'An unexpected error occurred';
-    return Promise.reject(new Error(message));
+    // Reject original error object so full error metadata remains intact for frontend catch blocks
+    return Promise.reject(error);
   }
 );
 

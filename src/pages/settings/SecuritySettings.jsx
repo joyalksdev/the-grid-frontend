@@ -1,3 +1,4 @@
+// src/pages/settings/SecuritySettings.jsx
 import React from "react";
 import { ShieldCheck, UserCheck, Key } from "@phosphor-icons/react";
 

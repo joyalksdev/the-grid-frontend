@@ -76,7 +76,7 @@ export default function Navbar() {
 
   const navItems = [
     { label: "Dashboard", path: "/", icon: SquaresFour },
-    { label: "Activity Logs", path: "/activity", icon: ClockCounterClockwise },
+    { label: "Logs", path: "/logs", icon: ClockCounterClockwise },
     { label: "Rates", path: "/pricing", icon: Calculator },
   ];
 

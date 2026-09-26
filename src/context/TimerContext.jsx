@@ -36,18 +36,51 @@ export function TimerProvider({ children }) {
     fetchScreens();
   }, [fetchScreens]);
 
-  // Real-time WebSocket event handling
+  // Real-time WebSocket event handling & notifications
   useEffect(() => {
     if (!socket) return;
 
     const handleScreenUpdated = (updatedScreen) => {
-      setScreens((prevScreens) =>
-        prevScreens.map((screen) => {
+      setScreens((prevScreens) => {
+        const oldScreen = prevScreens.find((s) => {
+          const sId = s.screenId ?? s.id ?? s._id;
+          const uId = updatedScreen.screenId ?? updatedScreen.id ?? updatedScreen._id;
+          return sId === uId;
+        });
+
+        if (oldScreen) {
+          const name = updatedScreen.name || oldScreen.name || "Station";
+
+          // 1. Session Started
+          if (oldScreen.status !== "occupied" && updatedScreen.status === "occupied") {
+            const player = updatedScreen.activeSession?.player || "Guest";
+            toast.success(`Session started for ${player} on ${name}`);
+          }
+          // 2. Session Checked Out / Ended
+          else if (oldScreen.status === "occupied" && updatedScreen.status !== "occupied") {
+            toast.success(`${name} has been checked out`);
+          }
+          // 3. Session Extended
+          else if (
+            oldScreen.status === "occupied" &&
+            updatedScreen.status === "occupied" &&
+            oldScreen.activeSession?.endTime &&
+            updatedScreen.activeSession?.endTime &&
+            new Date(updatedScreen.activeSession.endTime) > new Date(oldScreen.activeSession.endTime)
+          ) {
+            const oldEnd = new Date(oldScreen.activeSession.endTime).getTime();
+            const newEnd = new Date(updatedScreen.activeSession.endTime).getTime();
+            const addedMins = Math.round((newEnd - oldEnd) / 60000);
+            toast.success(`+${addedMins} Mins added to ${name}`);
+          }
+        }
+
+        return prevScreens.map((screen) => {
           const sId = screen.screenId ?? screen.id ?? screen._id;
           const uId = updatedScreen.screenId ?? updatedScreen.id ?? updatedScreen._id;
           return sId === uId ? updatedScreen : screen;
-        })
-      );
+        });
+      });
     };
 
     const handleScreensUpdated = (updatedScreens) => {
@@ -92,11 +125,6 @@ export function TimerProvider({ children }) {
   const startSession = async (sessionData) => {
     try {
       await screenService.startSession(sessionData.screenId, sessionData);
-      toast.success(
-        `Session started for ${
-          sessionData.player === "Guest" ? "guest player" : sessionData.player
-        }!`
-      );
     } catch (err) {
       toast.error(err.response?.data?.error || err.message || "Could not start session");
       throw err;
@@ -106,7 +134,6 @@ export function TimerProvider({ children }) {
   const extendSession = async (screenId, additionalMinutes = 30) => {
     try {
       await screenService.extendSession(screenId, { additionalMinutes });
-      toast.success(`+${additionalMinutes} Mins Added!`);
     } catch (err) {
       toast.error(err.response?.data?.error || err.message || "Could not extend session");
       throw err;
@@ -116,7 +143,6 @@ export function TimerProvider({ children }) {
   const checkoutSession = async ({ screenId, finalCost, paymentType }) => {
     try {
       await screenService.checkoutSession(screenId, { finalCost, paymentType });
-      toast.success(`₹${finalCost} payment recorded successfully!`);
     } catch (err) {
       toast.error(err.response?.data?.error || err.message || "Checkout failed");
       throw err;

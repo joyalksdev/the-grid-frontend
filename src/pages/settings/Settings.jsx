@@ -1,3 +1,4 @@
+// src/pages/settings/Settings.jsx
 import React, { useState, useEffect } from 'react';
 import { Gear, FloppyDisk } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
@@ -23,7 +24,7 @@ export default function Settings() {
   const handleChange = (cat, key, val) => {
     setPricing((prev) => ({
       ...prev,
-      [cat]: { ...prev[cat], [key]: Number(val) }
+      [cat]: { ...prev[cat], [key]: Math.max(0, Number(val) || 0) }
     }));
   };
 

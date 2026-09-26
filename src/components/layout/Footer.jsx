@@ -1,8 +1,10 @@
 // src/components/layout/Footer.jsx
 import React from "react";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { isAdmin } = useAuth();
 
   return (
     <footer className="w-full mt-auto bg-app-bg border-t border-border-divider pb-[env(safe-area-inset-bottom)]">
@@ -25,7 +27,7 @@ export default function Footer() {
           <span>Lounge Online</span>
         </p>
 
-        <p>Staff Panel</p>
+        <p>{isAdmin ? 'Admin' : 'Staff'} Panel</p>
       </div>
     </footer>
   );
