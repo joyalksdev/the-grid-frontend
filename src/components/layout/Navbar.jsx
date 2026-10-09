@@ -3,56 +3,135 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   SquaresFour,
+  CheckSquare,
   ClockCounterClockwise,
   Calculator,
   Gear,
   UserCircle,
   SignOut,
   CaretDown,
-  List,
-  X,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
+import Sheet from "../ui/Sheet";
 
 const FOCUS =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan";
-const FOCUS_OFFSET = `${FOCUS} focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg`;
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan focus-visible:ring-offset-1 focus-visible:ring-offset-app-bg";
+
+function AccountCard({ photoUrl, avatarUrl, displayName, roleBadgeClass, role }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border-divider/80 bg-app-bg/80 p-2.5 backdrop-blur-md">
+      <span className="size-10 shrink-0 overflow-hidden rounded-lg border border-border-divider/80 bg-card-panel shadow-xs">
+        <img
+          src={photoUrl}
+          alt={displayName}
+          width={40}
+          height={40}
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = avatarUrl;
+          }}
+          className="size-full object-cover"
+        />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+        <span className="truncate text-sm font-bold tracking-tight text-main leading-none">
+          {displayName}
+        </span>
+        <span className={`${roleBadgeClass} mt-0.5 self-start`}>{role}</span>
+      </div>
+    </div>
+  );
+}
+
+function AccountActions({ onNavigate, onLogout }) {
+  return (
+    <div className="mt-1.5 space-y-0.5 pt-1">
+      <Link
+        to="/profile"
+        onClick={onNavigate}
+        className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-sub transition-all duration-150 hover:bg-app-bg/80 hover:text-main ${FOCUS}`}
+      >
+        <UserCircle
+          size={18}
+          aria-hidden="true"
+          className="shrink-0 text-sub group-hover:text-primary-cyan transition-colors"
+        />
+        <span>My Account</span>
+      </Link>
+
+      <div className="my-1 border-t border-border-divider/60" />
+
+      <button
+        type="button"
+        onClick={onLogout}
+        className={`group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-occupied transition-all duration-150 hover:bg-occupied/10 ${FOCUS}`}
+      >
+        <SignOut
+          size={18}
+          aria-hidden="true"
+          className="shrink-0 transition-transform group-hover:-translate-x-0.5"
+        />
+        <span>Sign Out</span>
+      </button>
+    </div>
+  );
+}
 
 export default function Navbar() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
-  const headerRef = useRef(null);
   const dropdownRef = useRef(null);
   const triggerRef = useRef(null);
-  const menuButtonRef = useRef(null);
+  const lastScrollY = useRef(0);
 
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
   const reduceMotion = useReducedMotion();
 
-  // Close on outside press / Escape (returns focus so keyboard users aren't lost)
+  // Desktop Smart Scroll Header (Hide on scroll down, show on scroll up)
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY <= 40) {
+        setIsVisible(true);
+      } else if (
+        currentScrollY > lastScrollY.current &&
+        currentScrollY - lastScrollY.current > 8
+      ) {
+        setIsVisible(false);
+        setProfileDropdownOpen(false);
+      } else if (
+        currentScrollY < lastScrollY.current &&
+        lastScrollY.current - currentScrollY > 8
+      ) {
+        setIsVisible(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   useEffect(() => {
     function onPointerDown(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setProfileDropdownOpen(false);
       }
-      if (headerRef.current && !headerRef.current.contains(e.target)) {
-        setMobileMenuOpen(false);
-      }
     }
     function onKeyDown(e) {
       if (e.key !== "Escape") return;
-      const active = document.activeElement;
-      if (dropdownRef.current?.contains(active)) triggerRef.current?.focus();
-      if (document.getElementById("mobile-menu")?.contains(active)) {
-        menuButtonRef.current?.focus();
+      if (dropdownRef.current?.contains(document.activeElement)) {
+        triggerRef.current?.focus();
       }
       setProfileDropdownOpen(false);
-      setMobileMenuOpen(false);
     }
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -62,10 +141,9 @@ export default function Navbar() {
     };
   }, []);
 
-  // Close menus after navigating
   useEffect(() => {
-    setMobileMenuOpen(false);
     setProfileDropdownOpen(false);
+    setAccountSheetOpen(false);
   }, [location.pathname]);
 
   const handleLogout = async () => {
@@ -76,6 +154,7 @@ export default function Navbar() {
 
   const navItems = [
     { label: "Dashboard", path: "/", icon: SquaresFour },
+    { label: "Tasks", path: "/tasks", icon: CheckSquare },
     { label: "Logs", path: "/logs", icon: ClockCounterClockwise },
     { label: "Rates", path: "/pricing", icon: Calculator },
   ];
@@ -85,68 +164,151 @@ export default function Navbar() {
   }
 
   const isActive = (path) =>
-    path === "/"
-      ? location.pathname === "/"
-      : location.pathname.startsWith(path);
+    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
-  const displayName = user?.name || "Staff";
+  const displayName = user?.name || user?.username || "Staff";
   const role = user?.role || "staff";
 
-  // DiceBear Bottts robot avatar seeded by user identity
-  const avatarSeed = encodeURIComponent(
-    user?.name || user?.username || "GridOperator"
-  );
+  const avatarSeed = encodeURIComponent(displayName);
   const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${avatarSeed}&backgroundColor=0E131F`;
+  const photoUrl = user?.photoUrl || avatarUrl;
 
-  const roleBadgeClass = `font-mono text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+  const roleBadgeClass = `font-mono text-[9px] uppercase tracking-wider font-bold px-1.5 py-[1px] rounded border ${
     isAdmin
       ? "bg-primary-cyan/10 text-primary-cyan border-primary-cyan/30"
       : "bg-card-panel text-sub border-border-divider"
   }`;
 
-  const fade = {
-    duration: reduceMotion ? 0 : 0.15,
-    ease: "easeOut",
-  };
-
   return (
-    <header
-      ref={headerRef}
-      className="sticky top-0 z-50 h-16 bg-app-bg/90 backdrop-blur-md border-b border-border-divider font-body select-none"
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between gap-4">
-        {/* Brand */}
-        <Link
-          to="/"
-          className={`group flex items-center gap-3 rounded-lg ${FOCUS_OFFSET}`}
-        >
-          <img
-            src="/logo.png"
-            alt=""
-            width={32}
-            height={32}
-            fetchPriority="high"
-            className="h-8 w-auto object-contain shrink-0 transition-transform duration-200 ease-out motion-reduce:transition-none group-hover:scale-105"
-          />
-          <div className="flex flex-col justify-center leading-none">
-            <span
-              translate="no"
-              className="font-logo font-bold text-base tracking-wider text-main uppercase"
-            >
-              THE <span className="text-primary-cyan">GRID</span>
-            </span>
-            <span className="font-heading font-bold text-[10px] tracking-[0.22em] text-sub uppercase mt-0.5">
-              GAMING LOUNGE
-            </span>
-          </div>
-        </Link>
+    <>
+      {/* Desktop Header with On-Scroll Hide/Show */}
+      <header
+        className={`sticky top-0 z-40 hidden h-14 select-none border-b border-border-divider/80 bg-app-bg/85 font-body backdrop-blur-xl transition-transform duration-300 ease-in-out lg:block ${
+          isVisible ? "translate-y-0" : "-translate-y-full shadow-none"
+        }`}
+      >
+        <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-6 lg:px-8">
+          <Link to="/" className={`group flex items-center gap-3 rounded-lg ${FOCUS}`}>
+            <img
+              src="/logo.png"
+              alt="Logo"
+              width={28}
+              height={28}
+              fetchPriority="high"
+              className="h-7 w-auto shrink-0 object-contain transition-transform duration-300 ease-out group-hover:scale-105"
+            />
+            <div className="flex flex-col justify-center leading-none">
+              <span translate="no" className="font-logo text-sm font-bold uppercase tracking-wider text-main">
+                THE <span className="text-primary-cyan">GRID</span>
+              </span>
+              <span className="mt-0.5 font-heading text-[9px] font-bold uppercase tracking-[0.2em] text-sub">
+                GAMING LOUNGE
+              </span>
+            </div>
+          </Link>
 
-        {/* Desktop Navigation */}
-        <nav
-          aria-label="Main"
-          className="hidden lg:flex items-center gap-1 bg-card-panel/60 border border-border-divider p-1 rounded-xl"
-        >
-          {navItems.map((item) => {
+          {/* Navigation Pill Bar */}
+          <nav
+            aria-label="Desktop Navigation"
+            className="flex items-center gap-1.5 rounded-xl border border-border-divider/60 bg-card-panel/40 p-1 shadow-xs"
+          >
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.path);
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  aria-current={active ? "page" : undefined}
+                  className={`relative flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold tracking-wide transition-all duration-200 ${FOCUS} ${
+                    active
+                      ? "bg-app-bg text-main shadow-xs ring-1 ring-border-divider/80"
+                      : "text-sub hover:bg-card-panel/60 hover:text-main"
+                  }`}
+                >
+                  <Icon
+                    size={16}
+                    aria-hidden="true"
+                    weight={active ? "bold" : "regular"}
+                    className={active ? "text-primary-cyan" : "text-sub"}
+                  />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Profile Dropdown Trigger */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              ref={triggerRef}
+              type="button"
+              onClick={() => setProfileDropdownOpen((open) => !open)}
+              aria-expanded={profileDropdownOpen}
+              aria-controls="profile-menu"
+              className={`group flex cursor-pointer items-center gap-2.5 rounded-xl border border-border-divider/80 bg-card-panel/80 p-1 pl-1.5 transition-all duration-150 hover:border-sub/60 ${FOCUS}`}
+            >
+              <span className="size-7 shrink-0 overflow-hidden rounded-lg border border-border-divider/80 bg-app-bg">
+                <img
+                  src={photoUrl}
+                  alt={displayName}
+                  width={28}
+                  height={28}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = avatarUrl;
+                  }}
+                  className="size-full object-cover"
+                />
+              </span>
+              <span className="max-w-28 truncate text-xs font-bold text-main">{displayName}</span>
+              <CaretDown
+                size={12}
+                weight="bold"
+                aria-hidden="true"
+                className={`mr-1.5 shrink-0 text-sub transition-transform duration-200 ${
+                  profileDropdownOpen ? "rotate-180 text-main" : ""
+                }`}
+              />
+            </button>
+
+            <AnimatePresence>
+              {profileDropdownOpen && (
+                <motion.div
+                  id="profile-menu"
+                  initial={{ opacity: 0, scale: 0.96, y: -6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96, y: -6 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.12, ease: "easeOut" }}
+                  style={{ transformOrigin: "top right" }}
+                  className="absolute right-0 z-50 mt-2 w-60 rounded-xl border border-border-divider/80 bg-card-panel/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl"
+                >
+                  <AccountCard
+                    photoUrl={photoUrl}
+                    avatarUrl={avatarUrl}
+                    displayName={displayName}
+                    roleBadgeClass={roleBadgeClass}
+                    role={role}
+                  />
+                  <AccountActions
+                    onNavigate={() => setProfileDropdownOpen(false)}
+                    onLogout={handleLogout}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </header>
+
+      {/* Capacitor-Ready Mobile Bottom Navigation Bar */}
+      <nav
+        aria-label="Mobile Navigation Bar"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border-divider/60 bg-app-bg/90 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-2xl lg:hidden select-none shadow-[0_-8px_30px_rgba(0,0,0,0.4)]"
+      >
+        <div className="mx-auto flex max-w-md items-center justify-between gap-1">
+          {navItems.slice(0, 4).map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
 
@@ -155,213 +317,75 @@ export default function Navbar() {
                 key={item.path}
                 to={item.path}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium tracking-wide transition-colors duration-150 motion-reduce:transition-none ${FOCUS} ${
-                  active
-                    ? "bg-app-bg text-main font-semibold border-border-divider"
-                    : "text-sub hover:text-main hover:bg-card-panel/50 border-transparent"
+                className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5 transition-colors ${FOCUS} ${
+                  active ? "text-primary-cyan font-bold" : "text-sub hover:text-main"
                 }`}
               >
+                {active && (
+                  <motion.div
+                    layoutId="mobileActiveTab"
+                    className="absolute inset-0 rounded-xl bg-primary-cyan/10"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                  />
+                )}
                 <Icon
-                  size={16}
+                  size={20}
+                  weight={active ? "fill" : "regular"}
+                  className="z-10"
                   aria-hidden="true"
-                  className={active ? "text-primary-cyan" : "text-sub"}
                 />
-                <span>{item.label}</span>
+                <span className="z-10 text-[9px] font-medium tracking-wide">{item.label}</span>
               </Link>
             );
           })}
-        </nav>
 
-        {/* Desktop Profile Menu */}
-        <div className="hidden lg:block relative" ref={dropdownRef}>
           <button
-            ref={triggerRef}
             type="button"
-            onClick={() => setProfileDropdownOpen((open) => !open)}
-            aria-expanded={profileDropdownOpen}
-            aria-controls="profile-menu"
-            className={`group flex items-center gap-2.5 p-1.5 pl-2 bg-card-panel border border-border-divider rounded-xl hover:border-sub/40 transition-colors duration-150 motion-reduce:transition-none cursor-pointer touch-manipulation ${FOCUS_OFFSET}`}
+            onClick={() => setAccountSheetOpen(true)}
+            aria-label="Account Settings"
+            className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-sub transition-colors hover:text-main ${FOCUS}`}
           >
-            <span className="size-7 rounded-lg bg-app-bg border border-border-divider overflow-hidden shrink-0">
+            <span className="size-[20px] shrink-0 overflow-hidden rounded-full border border-border-divider/80 bg-card-panel shadow-xs">
               <img
-                src={avatarUrl}
-                alt=""
-                width={28}
-                height={28}
+                src={photoUrl}
+                alt={displayName}
+                width={20}
+                height={20}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = avatarUrl;
+                }}
                 className="size-full object-cover"
               />
             </span>
-            <span className="max-w-32 truncate text-xs font-semibold text-main">
-              {displayName}
-            </span>
-            <CaretDown
-              size={12}
-              aria-hidden="true"
-              className={`mr-1 shrink-0 text-sub transition-transform duration-150 motion-reduce:transition-none ${
-                profileDropdownOpen ? "rotate-180" : ""
-              }`}
-            />
+            <span className="text-[9px] font-medium tracking-wide">Profile</span>
           </button>
-
-          <AnimatePresence>
-            {profileDropdownOpen && (
-              <motion.div
-                id="profile-menu"
-                initial={{ opacity: 0, scale: 0.98, y: -4 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.98, y: -4 }}
-                transition={fade}
-                style={{ transformOrigin: "top right" }}
-                className="absolute right-0 mt-2 w-56 bg-card-panel border border-border-divider rounded-xl shadow-lg shadow-black/40 p-1.5 z-50"
-              >
-                <div className="flex items-center gap-3 rounded-lg border border-border-divider/60 bg-app-bg/60 px-3 py-2.5 mb-1.5">
-                  <span className="size-9 rounded-lg bg-card-panel border border-border-divider overflow-hidden shrink-0">
-                    <img
-                      src={avatarUrl}
-                      alt=""
-                      width={36}
-                      height={36}
-                      className="size-full object-cover"
-                    />
-                  </span>
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="truncate text-xs font-bold text-main">
-                      {displayName}
-                    </span>
-                    <span className={`${roleBadgeClass} self-start`}>
-                      {role}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-0.5">
-                  <Link
-                    to="/profile"
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs text-sub hover:text-main hover:bg-app-bg/80 transition-colors duration-150 motion-reduce:transition-none ${FOCUS}`}
-                  >
-                    <UserCircle
-                      size={16}
-                      aria-hidden="true"
-                      className="text-primary-cyan"
-                    />
-                    <span>My Account</span>
-                  </Link>
-
-                  <div className="my-1 border-t border-border-divider" />
-
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs font-medium text-occupied hover:bg-occupied/10 transition-colors duration-150 motion-reduce:transition-none cursor-pointer ${FOCUS}`}
-                  >
-                    <SignOut size={16} aria-hidden="true" />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
+      </nav>
 
-        {/* Mobile / Tablet Toggle */}
-        <button
-          ref={menuButtonRef}
-          type="button"
-          onClick={() => setMobileMenuOpen((open) => !open)}
-          aria-label={mobileMenuOpen ? "Close Menu" : "Open Menu"}
-          aria-expanded={mobileMenuOpen}
-          aria-controls="mobile-menu"
-          className={`lg:hidden grid size-11 place-items-center rounded-xl bg-card-panel border border-border-divider text-sub hover:text-main transition-colors duration-150 motion-reduce:transition-none cursor-pointer touch-manipulation ${FOCUS_OFFSET}`}
-        >
-          {mobileMenuOpen ? (
-            <X size={20} aria-hidden="true" />
-          ) : (
-            <List size={20} aria-hidden="true" />
-          )}
-        </button>
-      </div>
-
-      {/* Mobile / Tablet Menu (overlays content, no layout shift) */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            id="mobile-menu"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={fade}
-            className="lg:hidden absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain bg-app-bg border-b border-border-divider"
-          >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 space-y-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              <nav aria-label="Main" className="flex flex-col gap-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = isActive(item.path);
-
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      aria-current={active ? "page" : undefined}
-                      className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none touch-manipulation ${FOCUS} ${
-                        active
-                          ? "bg-card-panel text-main font-semibold border-border-divider"
-                          : "text-sub hover:text-main hover:bg-card-panel/50 border-transparent"
-                      }`}
-                    >
-                      <Icon
-                        size={18}
-                        aria-hidden="true"
-                        className={active ? "text-primary-cyan" : "text-sub"}
-                      />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-
-                <Link
-                  to="/profile"
-                  className={`flex items-center gap-3 rounded-lg border border-transparent px-4 py-3 text-sm font-medium text-sub hover:text-main hover:bg-card-panel/50 transition-colors duration-150 motion-reduce:transition-none touch-manipulation ${FOCUS}`}
-                >
-                  <UserCircle size={18} aria-hidden="true" />
-                  <span>My Account</span>
-                </Link>
-              </nav>
-
-              <div className="flex items-center justify-between gap-3 border-t border-border-divider pt-3 px-1">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="size-9 rounded-lg bg-card-panel border border-border-divider overflow-hidden shrink-0">
-                    <img
-                      src={avatarUrl}
-                      alt=""
-                      width={36}
-                      height={36}
-                      className="size-full object-cover"
-                    />
-                  </span>
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <span className="truncate text-xs font-semibold text-main">
-                      {displayName}
-                    </span>
-                    <span className={`${roleBadgeClass} self-start`}>
-                      {role}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className={`shrink-0 flex items-center gap-1.5 rounded-lg border border-occupied/20 bg-occupied/10 px-3.5 py-2.5 text-xs font-semibold text-occupied cursor-pointer touch-manipulation ${FOCUS}`}
-                >
-                  <SignOut size={14} aria-hidden="true" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </header>
+      {/* Mobile Account Bottom Sheet */}
+      <Sheet
+        isOpen={accountSheetOpen}
+        onClose={() => setAccountSheetOpen(false)}
+        title="Account Settings"
+      >
+        <div className="space-y-2 p-1">
+          <AccountCard
+            photoUrl={photoUrl}
+            avatarUrl={avatarUrl}
+            displayName={displayName}
+            roleBadgeClass={roleBadgeClass}
+            role={role}
+          />
+          <AccountActions
+            onNavigate={() => setAccountSheetOpen(false)}
+            onLogout={() => {
+              setAccountSheetOpen(false);
+              handleLogout();
+            }}
+          />
+        </div>
+      </Sheet>
+    </>
   );
 }
