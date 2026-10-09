@@ -96,31 +96,28 @@ export function TimerProvider({ children }) {
     };
   }, [socket]);
 
-  // Local 1s timer loop for completion alerts
+  // Local 1s timer loop for completion alerts without triggering setScreens state updates
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
 
-      setScreens((prevScreens) =>
-        prevScreens.map((screen) => {
-          if (screen.status === "occupied" && screen.activeSession?.endTime) {
-            const endTime = new Date(screen.activeSession.endTime);
-            const sessionKey = `${screen.screenId || screen._id}-${screen.activeSession.startTime}`;
+      screens.forEach((screen) => {
+        if (screen.status === "occupied" && screen.activeSession?.endTime) {
+          const endTime = new Date(screen.activeSession.endTime);
+          const sessionKey = `${screen.screenId || screen._id}-${screen.activeSession.startTime}`;
 
-            if (endTime <= now && !alertedSessions.current.has(sessionKey)) {
-              alertedSessions.current.add(sessionKey);
-              toast.error(`Time's up for ${screen.name}! Ready for checkout.`, {
-                duration: 6000,
-              });
-            }
+          if (endTime <= now && !alertedSessions.current.has(sessionKey)) {
+            alertedSessions.current.add(sessionKey);
+            toast.error(`Time's up for ${screen.name}! Ready for checkout.`, {
+              duration: 6000,
+            });
           }
-          return screen;
-        })
-      );
+        }
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [screens]);
 
   const startSession = async (sessionData) => {
     try {
