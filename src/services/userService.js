@@ -1,10 +1,19 @@
-// client/src/services/userService.js
-import API from "./api"; // Axios instance configured with baseURL and Auth headers
+import API from "./api";
 
 export const userService = {
+  // Update logged-in user's profile and avatar photo
+  updateProfile: async (formData) => {
+    const response = await API.put("/users/profile", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+
   // Fetch all staff members / users
-  getUsers: async () => {
-    const response = await API.get("/users");
+  getUsers: async (params) => {
+    const response = await API.get("/users", { params });
     return response.data;
   },
 
@@ -14,7 +23,25 @@ export const userService = {
     return response.data;
   },
 
-  // Create a new staff member
+  // Generate Invite Token Link
+  inviteUser: async (inviteData) => {
+    const response = await API.post("/auth/invite", inviteData);
+    return response.data;
+  },
+
+  // Fetch Active Invite Tokens List
+  getInvites: async () => {
+    const response = await API.get("/auth/invites");
+    return response.data;
+  },
+
+  // Revoke an Active Invite Token
+  revokeInvite: async (inviteId) => {
+    const response = await API.delete(`/auth/invites/${inviteId}`);
+    return response.data;
+  },
+
+  // Create a user directly
   createUser: async (userData) => {
     const response = await API.post("/users", userData);
     return response.data;
@@ -26,7 +53,7 @@ export const userService = {
     return response.data;
   },
 
-  // Toggle user active / inactive status
+  // Toggle user active / inactive status (Approve / Deactivate)
   toggleUserStatus: async (id) => {
     const response = await API.patch(`/users/${id}/status`);
     return response.data;
@@ -34,7 +61,7 @@ export const userService = {
 
   // Delete a user account
   deleteUser: async (id) => {
-    const response = await api.delete(`/users/${id}`);
+    const response = await API.delete(`/users/${id}`);
     return response.data;
   },
 };

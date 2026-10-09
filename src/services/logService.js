@@ -1,3 +1,4 @@
+// src/services/logService.js
 import API from './api';
 
 export const logService = {
@@ -8,6 +9,11 @@ export const logService = {
 
   getMetrics: async () => {
     const response = await API.get('/logs/metrics');
+    return response.data;
+  },
+
+  getAnalytics: async (params = {}) => {
+    const response = await API.get('/analytics', { params });
     return response.data;
   },
 
