@@ -1,11 +1,13 @@
 # Logs
-logs
+/logs
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+# Allow frontend component folders named logs
+!src/components/logs/
 
 node_modules
 dist
