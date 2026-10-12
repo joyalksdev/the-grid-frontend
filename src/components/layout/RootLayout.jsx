@@ -30,7 +30,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <div className="relative min-h-dvh bg-app-bg text-main font-body selection:bg-primary-cyan/30 selection:text-primary-cyan overflow-x-hidden">
+    <div className="relative min-h-dvh bg-app-bg font-body text-main selection:bg-primary-cyan/30 selection:text-primary-cyan">
       {/* Background Pattern */}
       <div
         aria-hidden="true"
@@ -45,9 +45,9 @@ export default function RootLayout() {
       </a>
 
       {/* Staff Layout (Navbar + Content + Footer) */}
-      <div className="relative z-10 flex flex-col min-h-dvh">
+      <div className="relative z-10 flex min-h-dvh flex-col pb-[72px] lg:pb-0">
         <Navbar />
-        <main id="main-content" className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <main id="main-content" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />
         </main>
         <Footer />

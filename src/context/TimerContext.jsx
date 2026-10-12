@@ -1,3 +1,4 @@
+// @refresh reload
 // src/context/TimerContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "react-hot-toast";
@@ -137,9 +138,9 @@ export function TimerProvider({ children }) {
     }
   };
 
-  const checkoutSession = async ({ screenId, finalCost, paymentType }) => {
+  const checkoutSession = async ({ screenId, finalCost, paymentType, splitDetails }) => {
     try {
-      await screenService.checkoutSession(screenId, { finalCost, paymentType });
+      await screenService.checkoutSession(screenId, { finalCost, paymentType, splitDetails });
     } catch (err) {
       toast.error(err.response?.data?.error || err.message || "Checkout failed");
       throw err;

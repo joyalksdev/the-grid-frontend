@@ -15,7 +15,8 @@ import {
   Funnel,
   CaretDown,
   Shield,
-  Eye
+  Eye,
+  UserCircle
 } from "@phosphor-icons/react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
@@ -23,6 +24,7 @@ import { logService } from "../services/logService";
 import { formatINR } from "../utils/format";
 import Dropdown from "../components/ui/Dropdown";
 import Loader from "../components/ui/Loader";
+import ConfirmModal from "../components/ui/ConfirmModal";
 import { Segmented } from "../components/ui/PriceCalculator";
 import RevenueSummary from "../components/logs/RevenueSummary";
 import EditLogModal from "../components/logs/EditLogModal";
@@ -32,7 +34,6 @@ const PAGE_SIZE = 10;
 const FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan";
 
-// Owner-only: ranges wide enough to spot trends.
 const DATE_RANGES = [
   { value: "today", label: "Today" },
   { value: "yesterday", label: "Yest" },
@@ -41,15 +42,11 @@ const DATE_RANGES = [
   { value: "all", label: "All" },
 ];
 
-// Fixed station screen filter options matching system standard
 const SCREEN_OPTIONS = [
   { value: "all", label: "All Stations" },
-  { value: "PS5-1", label: "PS5 #1" },
-  { value: "PS5-2", label: "PS5 #2" },
-  { value: "PS5-3", label: "PS5 #3" },
-  { value: "PS5-4", label: "PS5 #4" },
-  { value: "SimRig-1", label: "SimRig #1" },
-  { value: "SimRig-2", label: "SimRig #2" },
+  { value: "Screen 1", label: "Screen 1" },
+  { value: "Screen 2", label: "Screen 2" },
+  { value: "Screen 3", label: "Screen 3" },
 ];
 
 const COMPACT_SELECT =
@@ -119,6 +116,10 @@ export default function Logs() {
   const [editingLog, setEditingLog] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+  // Delete Confirmation Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [logToDelete, setLogToDelete] = useState(null);
+
   const observerTarget = useRef(null);
 
   const fetchLogs = useCallback(async () => {
@@ -129,11 +130,12 @@ export default function Logs() {
 
       if (isOwnerOrAdmin) {
         params.dateRange = dateRange;
-        if (paymentFilter !== "all") params.payment = paymentFilter;
-        if (screenFilter !== "all") params.screen = screenFilter;
       } else {
         params.date = specificDate;
       }
+
+      if (paymentFilter !== "all") params.payment = paymentFilter;
+      if (screenFilter !== "all") params.screen = screenFilter;
 
       const data = await logService.getLogs(params);
       const safeLogs = Array.isArray(data) ? data : [];
@@ -191,20 +193,30 @@ export default function Logs() {
     fetchLogs();
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this session record?")) return;
+  const handleDeletePrompt = (id) => {
+    setLogToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!logToDelete) return;
     try {
-      await logService.deleteLog(id);
+      await logService.deleteLog(logToDelete);
       toast.success("Log record deleted");
       fetchLogs();
     } catch (error) {
       toast.error(error.response?.data?.error || "Failed to delete log");
+    } finally {
+      setLogToDelete(null);
+      setDeleteModalOpen(false);
     }
   };
 
-  // RBA Row Actions: Strict admin/owner edit & delete permissions
   const rowActions = (log) => {
-    if (!isOwnerOrAdmin) {
+    const isCreator = log.loggedBy && user && log.loggedBy.toString() === user._id.toString();
+    const canModify = isOwnerOrAdmin || isCreator;
+
+    if (!canModify) {
       return [
         { label: `Session ${log.id || ""}`, icon: <Eye size={15} />, onClick: () => {} }
       ];
@@ -213,7 +225,7 @@ export default function Logs() {
     return [
       { label: "Edit Session", icon: <PencilSimple size={15} />, onClick: () => handleEditClick(log) },
       { type: "divider" },
-      { label: "Delete Record", icon: <Trash size={15} />, danger: true, onClick: () => handleDelete(log._id) },
+      { label: "Delete Record", icon: <Trash size={15} />, danger: true, onClick: () => handleDeletePrompt(log._id) },
     ];
   };
 
@@ -309,73 +321,69 @@ export default function Logs() {
           )}
         </div>
 
-        {/* Owner-only: Payment & Station Cross-Filters */}
-        {isOwnerOrAdmin && (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-divider/70 bg-card-panel/70 p-3 text-xs shadow-sm">
-            <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-sub">
-              <Funnel size={13} aria-hidden="true" className="text-primary-cyan" />
-              Filters
-            </span>
+        {/* Payment & Station Cross-Filters */}
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-divider/70 bg-card-panel/70 p-3 text-xs shadow-sm">
+          <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-sub">
+            <Funnel size={13} aria-hidden="true" className="text-primary-cyan" />
+            Filters
+          </span>
 
-            {/* Payment Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-sub font-mono">Payment</span>
-              <div className="relative w-28">
-                <select
-                  value={paymentFilter}
-                  onChange={(e) => setPaymentFilter(e.target.value)}
-                  className={COMPACT_SELECT}
-                >
-                  <option value="all">All</option>
-                  <option value="Cash">Cash</option>
-                  <option value="UPI">UPI / GPay</option>
-                  <option value="Card">Card</option>
-                </select>
-                <CaretDown
-                  size={12}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sub"
-                />
-              </div>
-            </div>
-
-            {/* Station Screen Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-sub font-mono">Station</span>
-              <div className="relative w-36">
-                <select
-                  value={screenFilter}
-                  onChange={(e) => setScreenFilter(e.target.value)}
-                  className={COMPACT_SELECT}
-                >
-                  {SCREEN_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <CaretDown
-                  size={12}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sub"
-                />
-              </div>
-            </div>
-
-            {hasExtraFilters && (
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentFilter("all");
-                  setScreenFilter("all");
-                }}
-                className={`ml-auto font-mono text-xs font-semibold text-rose-400 hover:underline ${FOCUS}`}
+          <div className="flex items-center gap-1.5">
+            <span className="text-sub font-mono">Payment</span>
+            <div className="relative w-32">
+              <select
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value)}
+                className={COMPACT_SELECT}
               >
-                Reset Filters
-              </button>
-            )}
+                <option value="all">All</option>
+                <option value="Cash">Cash</option>
+                <option value="UPI">UPI / GPay</option>
+                <option value="Split">Split</option>
+              </select>
+              <CaretDown
+                size={12}
+                aria-hidden="true"
+                className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sub"
+              />
+            </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-sub font-mono">Station</span>
+            <div className="relative w-36">
+              <select
+                value={screenFilter}
+                onChange={(e) => setScreenFilter(e.target.value)}
+                className={COMPACT_SELECT}
+              >
+                {SCREEN_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <CaretDown
+                size={12}
+                aria-hidden="true"
+                className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sub"
+              />
+            </div>
+          </div>
+
+          {hasExtraFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentFilter("all");
+                setScreenFilter("all");
+              }}
+              className={`ml-auto font-mono text-xs font-semibold text-rose-400 hover:underline ${FOCUS}`}
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -395,7 +403,7 @@ export default function Logs() {
         </div>
       ) : (
         <>
-          {/* Mobile Card Layout (< md breakpoint) */}
+          {/* Mobile Card Layout */}
           <div className="grid grid-cols-1 gap-3.5 md:hidden">
             {displayedLogs.map((log) => {
               const { dateStr, startTimeStr, endTimeStr } = formatSessionDateTime(log);
@@ -441,6 +449,12 @@ export default function Logs() {
                         <Monitor size={14} aria-hidden="true" className="text-sub" />
                         {log.screen}
                       </p>
+                      {isOwnerOrAdmin && log.operatorName && (
+                        <p className="flex items-center gap-1 font-mono text-[10px] text-sub">
+                          <UserCircle size={12} className="text-primary-cyan" />
+                          Logged by: <span className="text-main">{log.operatorName}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div className="shrink-0 text-right">
@@ -450,6 +464,11 @@ export default function Logs() {
                       <span className="mt-1 inline-block rounded-md border border-border-divider bg-app-bg px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-sub">
                         {log.payment}
                       </span>
+                      {log.payment === 'Split' && log.splitDetails && (
+                        <div className="mt-0.5 font-mono text-[9px] text-sub">
+                          (₹{log.splitDetails.cashAmount}C / ₹{log.splitDetails.upiAmount}U)
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -471,7 +490,7 @@ export default function Logs() {
             })}
           </div>
 
-          {/* Desktop Table Layout (≥ md breakpoint) */}
+          {/* Desktop Table Layout */}
           <div className="hidden overflow-hidden rounded-2xl border border-border-divider bg-card-panel shadow-sm md:block">
             <table className="w-full text-left text-sm text-sub">
               <thead className="border-b border-border-divider bg-app-bg/80 font-mono text-[11px] uppercase tracking-wider text-sub">
@@ -480,6 +499,7 @@ export default function Logs() {
                   <th className="px-5 py-3.5 font-semibold">Date</th>
                   <th className="px-5 py-3.5 font-semibold">Player</th>
                   <th className="px-5 py-3.5 font-semibold">Station</th>
+                  {isOwnerOrAdmin && <th className="px-5 py-3.5 font-semibold">Logged By</th>}
                   <th className="px-5 py-3.5 font-semibold">Timing</th>
                   <th className="px-5 py-3.5 font-semibold">Duration</th>
                   <th className="px-5 py-3.5 font-semibold">Payment</th>
@@ -502,6 +522,11 @@ export default function Logs() {
                       <td className="px-5 py-3.5 font-mono text-xs text-sub">{dateStr}</td>
                       <td className="px-5 py-3.5 font-semibold text-main">{log.player}</td>
                       <td className="px-5 py-3.5 font-mono text-xs text-main">{log.screen}</td>
+                      {isOwnerOrAdmin && (
+                        <td className="px-5 py-3.5 font-mono text-xs text-main">
+                          {log.operatorName || 'System Staff'}
+                        </td>
+                      )}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1.5 font-mono text-xs text-main">
                           <span>{startTimeStr}</span>
@@ -516,6 +541,11 @@ export default function Logs() {
                         <span className="rounded-md border border-border-divider bg-app-bg px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-sub">
                           {log.payment}
                         </span>
+                        {log.payment === 'Split' && log.splitDetails && (
+                          <div className="mt-1 font-mono text-[9px] text-sub">
+                            ₹{log.splitDetails.cashAmount}C / ₹{log.splitDetails.upiAmount}U
+                          </div>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 font-mono font-bold tabular-nums text-emerald-400">
                         {formatINR(log.cost)}
@@ -573,6 +603,20 @@ export default function Logs() {
         }}
         logData={editingLog}
         onUpdateComplete={handleUpdateComplete}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setLogToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Session Record"
+        message="Are you sure you want to delete this session record? This action cannot be undone."
+        confirmText="Delete"
+        danger={true}
       />
     </div>
   );

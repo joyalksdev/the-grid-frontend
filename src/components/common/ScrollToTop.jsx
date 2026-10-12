@@ -31,7 +31,7 @@ export default function ScrollToTop() {
     <button
       onClick={scrollToTop}
       aria-label="Scroll to top"
-      className="fixed bottom-6 right-6 z-50 p-3 rounded-xl bg-[#0E131F] text-[#00F6FF] border border-[#1C2436] shadow-lg shadow-black/50 hover:bg-[#161920] hover:border-[#00F6FF]/40 active:scale-95 transition-all duration-200 cursor-pointer group"
+      className="fixed bottom-25 right-6 z-50 p-3 rounded-xl bg-[#0E131F] text-[#00F6FF] border border-[#1C2436] shadow-lg shadow-black/50 hover:bg-[#161920] hover:border-[#00F6FF]/40 active:scale-95 transition-all duration-200 cursor-pointer group"
     >
       <CaretUp
         size={20}

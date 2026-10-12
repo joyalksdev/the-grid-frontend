@@ -91,28 +91,33 @@ function ShareRevenueSheet({ isOpen, onClose, link }) {
   );
 }
 
-/**
- * Role-based: owners get a direct button into the Revenue Reveal page.
- * Staff get a link they can hand off — the breakdown never renders on their
- * screen.
- *
- * `dayClosed` should reflect your real end-of-day state; wire it up when
- * that flow exists. Defaults to true so this works as-is.
- */
 export default function RevenueSummary({ logs = [], isOwner = false, dayClosed = true }) {
   const navigate = useNavigate();
   const [shareOpen, setShareOpen] = useState(false);
 
-  const totalCash = logs
-    .filter((l) => String(l.payment).toLowerCase() === "cash")
-    .reduce((sum, l) => sum + (Number(l.cost) || 0), 0);
+  // Accumulate cash from pure Cash logs AND cash portion of Split logs
+  const totalCash = logs.reduce((sum, l) => {
+    const p = String(l.payment).toLowerCase();
+    if (p === "cash") {
+      return sum + (Number(l.cost) || 0);
+    }
+    if (p === "split" && l.splitDetails) {
+      return sum + (Number(l.splitDetails.cashAmount) || 0);
+    }
+    return sum;
+  }, 0);
 
-  const totalGPay = logs
-    .filter((l) => {
-      const p = String(l.payment).toLowerCase();
-      return p.includes("upi") || p.includes("gpay");
-    })
-    .reduce((sum, l) => sum + (Number(l.cost) || 0), 0);
+  // Accumulate UPI from pure UPI/GPay logs AND UPI portion of Split logs
+  const totalGPay = logs.reduce((sum, l) => {
+    const p = String(l.payment).toLowerCase();
+    if (p.includes("upi") || p.includes("gpay")) {
+      return sum + (Number(l.cost) || 0);
+    }
+    if (p === "split" && l.splitDetails) {
+      return sum + (Number(l.splitDetails.upiAmount) || 0);
+    }
+    return sum;
+  }, 0);
 
   const totalRevenue = logs.reduce((sum, l) => sum + (Number(l.cost) || 0), 0);
   const shareLink = `${window.location.origin}/logs/revenue`;
