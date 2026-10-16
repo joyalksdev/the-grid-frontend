@@ -213,12 +213,15 @@ export default function Logs() {
   };
 
   const rowActions = (log) => {
-    const isCreator = log.loggedBy && user && log.loggedBy.toString() === user._id.toString();
+    // Safe evaluation to prevent toString crashes when loggedBy is an object or undefined
+    const logCreatorId = typeof log?.loggedBy === "object" ? log.loggedBy?._id?.toString() : log?.loggedBy?.toString();
+    const currentUserId = user?._id?.toString();
+    const isCreator = logCreatorId && currentUserId && logCreatorId === currentUserId;
     const canModify = isOwnerOrAdmin || isCreator;
 
     if (!canModify) {
       return [
-        { label: `Session ${log.id || ""}`, icon: <Eye size={15} />, onClick: () => {} }
+        { label: `Session ${log?.id || ""}`, icon: <Eye size={15} />, onClick: () => {} }
       ];
     }
 
