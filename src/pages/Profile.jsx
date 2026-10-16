@@ -502,8 +502,8 @@ export default function Profile() {
         </div>
       </motion.section>
 
-      {/* Staff Activity Analytics Widget (iOS Activity Ring Style) */}
-      <section className="overflow-hidden rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm">
+      
+      {/* <section className="overflow-hidden rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm">
         <div className="flex items-center justify-between border-b border-border-divider/60 pb-3.5">
           <div className="flex items-center gap-2">
             <Pulse size={18} className="text-primary-cyan" weight="bold" />
@@ -518,7 +518,7 @@ export default function Profile() {
         </div>
 
         <div className="mt-5 flex flex-col items-center gap-6 md:flex-row md:items-center md:justify-between md:gap-8">
-          {/* Circular Progression Ring */}
+          
           <div className="flex items-center gap-5 rounded-xl border border-border-divider/60 bg-app-bg/50 p-4 w-full md:w-auto">
             <CircularProgressRing percentage={dummyAnalytics.completionPct} size={100} strokeWidth={9} />
             <div className="space-y-1">
@@ -534,7 +534,7 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Quick Shift Metrics Grid */}
+          
           <div className="grid grid-cols-2 gap-3 w-full md:flex-1">
             <div className="space-y-1 rounded-xl border border-border-divider/60 bg-app-bg/40 p-3.5">
               <div className="flex items-center gap-1.5 text-xs text-sub font-mono">
@@ -577,9 +577,8 @@ export default function Profile() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
-      {/* Account Specifications */}
       <section className="overflow-hidden rounded-2xl border border-border-divider/80 bg-card-panel shadow-xs">
         <header className="border-b border-border-divider/80 px-6 py-3.5 flex items-center justify-between bg-app-bg/40">
           <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-sub">
