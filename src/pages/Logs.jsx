@@ -1,22 +1,17 @@
 // src/pages/Logs.jsx
-import React, { useState, useEffect, useCallback, useRef, useId } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  MagnifyingGlass,
-  PencilSimple,
-  Trash,
-  X,
-  Calendar,
-  Clock,
-  DotsThreeVertical,
-  User,
-  Monitor,
-  ArrowRight,
-  Sparkle,
-  Funnel,
-  CaretDown,
   Shield,
   Eye,
-  UserCircle
+  Clock,
+  Calendar,
+  ArrowRight,
+  Sparkle,
+  PencilSimple,
+  Trash,
+  DotsThreeVertical,
+  User,
+  Monitor
 } from "@phosphor-icons/react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
@@ -25,32 +20,15 @@ import { formatINR } from "../utils/format";
 import Dropdown from "../components/ui/Dropdown";
 import Loader from "../components/ui/Loader";
 import ConfirmModal from "../components/ui/ConfirmModal";
-import { Segmented } from "../components/ui/PriceCalculator";
 import RevenueSummary from "../components/logs/RevenueSummary";
 import EditLogModal from "../components/logs/EditLogModal";
+import StaffProfileModal from "../components/ui/StaffProfileModal";
+import LogFilterBar from "../components/logs/LogFilterBar";
 
 const PAGE_SIZE = 10;
 
 const FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan";
-
-const DATE_RANGES = [
-  { value: "today", label: "Today" },
-  { value: "yesterday", label: "Yest" },
-  { value: "this_week", label: "Week" },
-  { value: "this_month", label: "Month" },
-  { value: "all", label: "All" },
-];
-
-const SCREEN_OPTIONS = [
-  { value: "all", label: "All Stations" },
-  { value: "Screen 1", label: "Screen 1" },
-  { value: "Screen 2", label: "Screen 2" },
-  { value: "Screen 3", label: "Screen 3" },
-];
-
-const COMPACT_SELECT =
-  "h-9 w-full appearance-none cursor-pointer rounded-lg border border-border-divider bg-app-bg pl-2.5 pr-7 text-xs text-main transition-colors duration-150 focus:outline-none focus:border-primary-cyan";
 
 function formatDurationDisplay(mins) {
   const num = parseInt(mins, 10);
@@ -97,7 +75,6 @@ const todayISO = () => new Date().toISOString().split("T")[0];
 export default function Logs() {
   const { user } = useAuth();
   const isOwnerOrAdmin = ["admin", "owner"].includes(user?.role);
-  const dateInputId = useId();
 
   const [allLogs, setAllLogs] = useState([]);
   const [displayedLogs, setDisplayedLogs] = useState([]);
@@ -110,11 +87,16 @@ export default function Logs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState("today");
   const [specificDate, setSpecificDate] = useState(todayISO());
+  const [dateMode, setDateMode] = useState("range"); // "range" or "exact" for admin
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [screenFilter, setScreenFilter] = useState("all");
 
   const [editingLog, setEditingLog] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Profile Modal Showcase State
+  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Delete Confirmation Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -129,7 +111,11 @@ export default function Logs() {
       if (searchTerm.trim()) params.search = searchTerm.trim();
 
       if (isOwnerOrAdmin) {
-        params.dateRange = dateRange;
+        if (dateMode === "range") {
+          params.dateRange = dateRange;
+        } else {
+          params.date = specificDate;
+        }
       } else {
         params.date = specificDate;
       }
@@ -148,7 +134,7 @@ export default function Logs() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, dateRange, specificDate, paymentFilter, screenFilter, isOwnerOrAdmin]);
+  }, [searchTerm, dateRange, specificDate, dateMode, paymentFilter, screenFilter, isOwnerOrAdmin]);
 
   useEffect(() => {
     const timer = setTimeout(fetchLogs, 300);
@@ -212,8 +198,21 @@ export default function Logs() {
     }
   };
 
+  const handleOpenProfile = (staffData, operatorName, fallbackName) => {
+    if (staffData && typeof staffData === "object" && staffData._id) {
+      setSelectedStaff(staffData);
+    } else {
+      setSelectedStaff({
+        name: operatorName || fallbackName || "System Staff",
+        username: "system",
+        role: "operator",
+        isActive: true,
+      });
+    }
+    setIsProfileModalOpen(true);
+  };
+
   const rowActions = (log) => {
-    // Safe evaluation to prevent toString crashes when loggedBy is an object or undefined
     const logCreatorId = typeof log?.loggedBy === "object" ? log.loggedBy?._id?.toString() : log?.loggedBy?.toString();
     const currentUserId = user?._id?.toString();
     const isCreator = logCreatorId && currentUserId && logCreatorId === currentUserId;
@@ -265,129 +264,27 @@ export default function Logs() {
         </div>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="space-y-3">
-        {isOwnerOrAdmin ? (
-          <Segmented
-            label="Date Range"
-            value={dateRange}
-            onChange={setDateRange}
-            options={DATE_RANGES}
-          />
-        ) : (
-          <div className="flex items-center gap-2.5 rounded-xl border border-border-divider bg-card-panel p-3">
-            <label htmlFor={dateInputId} className="shrink-0 font-mono text-xs font-semibold text-sub">
-              Select Date:
-            </label>
-            <div className="relative w-44">
-              <Calendar
-                size={15}
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-primary-cyan"
-              />
-              <input
-                id={dateInputId}
-                type="date"
-                value={specificDate}
-                max={todayISO()}
-                onChange={(e) => setSpecificDate(e.target.value)}
-                className={`h-9 w-full rounded-lg border border-border-divider bg-app-bg pl-8 pr-2 font-mono text-xs font-bold text-main transition-colors focus:outline-none focus:border-primary-cyan ${FOCUS}`}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Search Bar */}
-        <div className="relative">
-          <MagnifyingGlass
-            size={18}
-            aria-hidden="true"
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sub"
-          />
-          <input
-            type="search"
-            placeholder="Search by player name, log ID, or station..."
-            autoComplete="off"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`h-11 w-full rounded-xl border border-border-divider bg-card-panel pl-10 pr-9 text-sm text-main placeholder:text-sub/60 transition-colors focus:outline-none focus:border-primary-cyan ${FOCUS}`}
-          />
-          {searchTerm && (
-            <button
-              type="button"
-              onClick={() => setSearchTerm("")}
-              aria-label="Clear search"
-              className={`absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 cursor-pointer place-items-center rounded-md text-sub transition-colors hover:text-main touch-manipulation ${FOCUS}`}
-            >
-              <X size={15} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-
-        {/* Payment & Station Cross-Filters */}
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-divider/70 bg-card-panel/70 p-3 text-xs shadow-sm">
-          <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-sub">
-            <Funnel size={13} aria-hidden="true" className="text-primary-cyan" />
-            Filters
-          </span>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-sub font-mono">Payment</span>
-            <div className="relative w-32">
-              <select
-                value={paymentFilter}
-                onChange={(e) => setPaymentFilter(e.target.value)}
-                className={COMPACT_SELECT}
-              >
-                <option value="all">All</option>
-                <option value="Cash">Cash</option>
-                <option value="UPI">UPI / GPay</option>
-                <option value="Split">Split</option>
-              </select>
-              <CaretDown
-                size={12}
-                aria-hidden="true"
-                className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sub"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-sub font-mono">Station</span>
-            <div className="relative w-36">
-              <select
-                value={screenFilter}
-                onChange={(e) => setScreenFilter(e.target.value)}
-                className={COMPACT_SELECT}
-              >
-                {SCREEN_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <CaretDown
-                size={12}
-                aria-hidden="true"
-                className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-sub"
-              />
-            </div>
-          </div>
-
-          {hasExtraFilters && (
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentFilter("all");
-                setScreenFilter("all");
-              }}
-              className={`ml-auto font-mono text-xs font-semibold text-rose-400 hover:underline ${FOCUS}`}
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Redesigned Unified Filter Toolbar Component with Admin Calendar Support */}
+      <LogFilterBar
+        isOwnerOrAdmin={isOwnerOrAdmin}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        specificDate={specificDate}
+        setSpecificDate={setSpecificDate}
+        dateMode={dateMode}
+        setDateMode={setDateMode}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        paymentFilter={paymentFilter}
+        setPaymentFilter={setPaymentFilter}
+        screenFilter={screenFilter}
+        setScreenFilter={setScreenFilter}
+        hasExtraFilters={hasExtraFilters}
+        onResetFilters={() => {
+          setPaymentFilter("all");
+          setScreenFilter("all");
+        }}
+      />
 
       {/* Main Content Area */}
       {loading ? (
@@ -410,6 +307,8 @@ export default function Logs() {
           <div className="grid grid-cols-1 gap-3.5 md:hidden">
             {displayedLogs.map((log) => {
               const { dateStr, startTimeStr, endTimeStr } = formatSessionDateTime(log);
+              const operatorObj = typeof log.loggedBy === "object" ? log.loggedBy : null;
+              const operatorDisplayName = operatorObj?.name || log.operatorName || "System Staff";
 
               return (
                 <div
@@ -452,12 +351,23 @@ export default function Logs() {
                         <Monitor size={14} aria-hidden="true" className="text-sub" />
                         {log.screen}
                       </p>
-                      {isOwnerOrAdmin && log.operatorName && (
-                        <p className="flex items-center gap-1 font-mono text-[10px] text-sub">
-                          <UserCircle size={12} className="text-primary-cyan" />
-                          Logged by: <span className="text-main">{log.operatorName}</span>
-                        </p>
-                      )}
+                      
+                      <button
+                        type="button"
+                        onClick={() => handleOpenProfile(operatorObj, operatorDisplayName)}
+                        className="flex items-center gap-1.5 pt-1 text-left group cursor-pointer"
+                      >
+                        <span className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-full border border-border-divider bg-app-bg text-[9px] font-bold text-primary-cyan">
+                          {operatorObj?.photoUrl ? (
+                            <img src={operatorObj.photoUrl} alt="" className="size-full object-cover" />
+                          ) : (
+                            operatorDisplayName.charAt(0).toUpperCase()
+                          )}
+                        </span>
+                        <span className="font-mono text-[10px] text-sub group-hover:text-primary-cyan transition-colors">
+                          Logged by: <span className="text-main underline underline-offset-2">{operatorDisplayName}</span>
+                        </span>
+                      </button>
                     </div>
 
                     <div className="shrink-0 text-right">
@@ -467,11 +377,6 @@ export default function Logs() {
                       <span className="mt-1 inline-block rounded-md border border-border-divider bg-app-bg px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-sub">
                         {log.payment}
                       </span>
-                      {log.payment === 'Split' && log.splitDetails && (
-                        <div className="mt-0.5 font-mono text-[9px] text-sub">
-                          (₹{log.splitDetails.cashAmount}C / ₹{log.splitDetails.upiAmount}U)
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -502,7 +407,7 @@ export default function Logs() {
                   <th className="px-5 py-3.5 font-semibold">Date</th>
                   <th className="px-5 py-3.5 font-semibold">Player</th>
                   <th className="px-5 py-3.5 font-semibold">Station</th>
-                  {isOwnerOrAdmin && <th className="px-5 py-3.5 font-semibold">Logged By</th>}
+                  <th className="px-5 py-3.5 font-semibold">Logged By</th>
                   <th className="px-5 py-3.5 font-semibold">Timing</th>
                   <th className="px-5 py-3.5 font-semibold">Duration</th>
                   <th className="px-5 py-3.5 font-semibold">Payment</th>
@@ -513,6 +418,8 @@ export default function Logs() {
               <tbody className="divide-y divide-border-divider">
                 {displayedLogs.map((log) => {
                   const { dateStr, startTimeStr, endTimeStr } = formatSessionDateTime(log);
+                  const operatorObj = typeof log.loggedBy === "object" ? log.loggedBy : null;
+                  const operatorDisplayName = operatorObj?.name || log.operatorName || "System Staff";
 
                   return (
                     <tr
@@ -525,11 +432,24 @@ export default function Logs() {
                       <td className="px-5 py-3.5 font-mono text-xs text-sub">{dateStr}</td>
                       <td className="px-5 py-3.5 font-semibold text-main">{log.player}</td>
                       <td className="px-5 py-3.5 font-mono text-xs text-main">{log.screen}</td>
-                      {isOwnerOrAdmin && (
-                        <td className="px-5 py-3.5 font-mono text-xs text-main">
-                          {log.operatorName || 'System Staff'}
-                        </td>
-                      )}
+                      <td className="px-5 py-3.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenProfile(operatorObj, operatorDisplayName)}
+                          className="flex items-center gap-2 group cursor-pointer text-left"
+                        >
+                          <span className="grid size-6 shrink-0 place-items-center overflow-hidden rounded-full border border-border-divider bg-app-bg text-[10px] font-bold text-primary-cyan">
+                            {operatorObj?.photoUrl ? (
+                              <img src={operatorObj.photoUrl} alt="" className="size-full object-cover" />
+                            ) : (
+                              operatorDisplayName.charAt(0).toUpperCase()
+                            )}
+                          </span>
+                          <span className="font-mono text-xs text-main group-hover:text-primary-cyan transition-colors underline underline-offset-2">
+                            {operatorDisplayName}
+                          </span>
+                        </button>
+                      </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1.5 font-mono text-xs text-main">
                           <span>{startTimeStr}</span>
@@ -596,6 +516,16 @@ export default function Logs() {
           </div>
         </>
       )}
+
+      {/* Staff Profile Showcase Modal */}
+      <StaffProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setSelectedStaff(null);
+        }}
+        staff={selectedStaff}
+      />
 
       {/* Edit Log Modal */}
       <EditLogModal
