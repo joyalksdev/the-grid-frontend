@@ -124,6 +124,7 @@ export default function Logs() {
       if (screenFilter !== "all") params.screen = screenFilter;
 
       const data = await logService.getLogs(params);
+      console.log(data)
       const safeLogs = Array.isArray(data) ? data : [];
       setAllLogs(safeLogs);
       setPage(1);
