@@ -22,6 +22,7 @@ import Loader from "./components/ui/Loader";
 import RevenueReveal from "./pages/RevenueReveal";
 import AdminDashboard from './pages/admin/AdminDashboard'
 import Tasks from "./pages/Tasks";
+import Hardware from "./pages/Hardware";
 
 function FullScreenLoader() {
   return (
@@ -62,6 +63,7 @@ function MainAppRoutes() {
           <Route path="/settings/requests" element={<UserRequestsPage />} />
           <Route path="/logs" element={<Logs />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/hardware" element={<Hardware />} />
           <Route path="/logs/revenue" element={<RevenueReveal />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/profile" element={<Profile />} />
@@ -80,6 +82,7 @@ function MainAppRoutes() {
         <Route path="/logs/revenue" element={<RevenueReveal />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/tasks" element={<Tasks />} />
+        <Route path="/hardware" element={<Hardware />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<Navigate to="/" replace />} />
 
