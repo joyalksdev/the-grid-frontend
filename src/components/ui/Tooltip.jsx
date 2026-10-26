@@ -30,7 +30,7 @@ export default function Tooltip({ children, content, position = 'top', delay = 0
 
   return (
     <div
-      className="relative flex items-center justify-center"
+      className="relative flex w-full items-center justify-center"
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
       onFocus={showTooltip}

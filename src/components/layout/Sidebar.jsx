@@ -10,6 +10,8 @@ import {
   UserPlus,
   SignOut,
   CaretLeft,
+  DesktopTowerIcon,
+  GameControllerIcon,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "react-hot-toast";
@@ -21,8 +23,7 @@ import Tooltip from "../ui/Tooltip";
 const FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan";
 
-// On-brand fallback palette — cycles through theme tokens only, so avatars
-// stay distinguishable without reaching for generic Tailwind colors.
+// On-brand fallback palette — cycles through theme tokens only
 const FALLBACK_STYLES = [
   "bg-primary-cyan/15 text-primary-cyan border-primary-cyan/30",
   "bg-tournament-primary/15 text-tournament-primary border-tournament-primary/30",
@@ -56,7 +57,6 @@ function UserAvatar({ src, name, className = "" }) {
   );
 }
 
-// Fades a label out/in instead of hard-toggling it when the sidebar collapses.
 function FadeLabel({ show, children, className = "" }) {
   const reduceMotion = useReducedMotion();
   return (
@@ -114,16 +114,91 @@ export default function Sidebar() {
     { label: "Dashboard", path: "/", icon: SquaresFour },
     { label: "Tasks", path: "/tasks", icon: CheckSquare },
     { label: "Logs", path: "/logs", icon: ClockCounterClockwise },
+    { label: "Screens", path: "/screens", icon: DesktopTowerIcon },
     { label: "Rates", path: "/pricing", icon: Calculator },
   ];
 
   const secondaryNavItems = [
     { label: "User Management", path: "/settings/users", icon: Users },
-    { label: "Requests & Invites", path: "/settings/requests", icon: UserPlus },
+    { label: "Hardware & Devices", path: "/hardware", icon: GameControllerIcon },
   ];
 
   const isActive = (path) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+
+  // Helper to render navigation items with square icon formatting and tooltips when collapsed
+  const renderNavItem = (item) => {
+    const Icon = item.icon;
+    const active = isActive(item.path);
+
+    const navContent = (
+      <NavLink
+        to={item.path}
+        className={`group relative flex items-center gap-3 text-xs font-semibold transition-all duration-150 motion-reduce:transition-none ${FOCUS} ${
+          collapsed
+            ? "mx-auto size-10 justify-center rounded-xl px-0"
+            : "w-full rounded-xl px-3 py-2.5"
+        } ${
+          active
+            ? "border border-primary-cyan/30 bg-primary-cyan/10 text-primary-cyan shadow-sm shadow-primary-cyan/5"
+            : "border border-transparent text-sub hover:bg-app-bg hover:text-main"
+        }`}
+      >
+        {active && !collapsed && <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary-cyan" />}
+        <Icon
+          size={20}
+          weight={active ? "bold" : "regular"}
+          aria-hidden="true"
+          className={`shrink-0 transition-colors duration-150 motion-reduce:transition-none ${
+            active ? "text-primary-cyan" : "text-sub group-hover:text-main"
+          }`}
+        />
+        <FadeLabel show={!collapsed} className="truncate">
+          {item.label}
+        </FadeLabel>
+      </NavLink>
+    );
+
+    return collapsed ? (
+      <Tooltip key={item.path} content={item.label} position="right" delay={0.1}>
+        {navContent}
+      </Tooltip>
+    ) : (
+      <React.Fragment key={item.path}>{navContent}</React.Fragment>
+    );
+  };
+
+  const profileLinkContent = (
+    <Link
+      to="/profile"
+      className={`group flex items-center gap-3 rounded-xl border border-border-divider bg-app-bg transition-colors duration-150 hover:border-sub/40 motion-reduce:transition-none ${FOCUS} ${
+        collapsed ? "mx-auto size-10 justify-center p-0" : "p-2"
+      }`}
+    >
+      <UserAvatar src={photoUrl} name={displayName} className="size-8 shrink-0 rounded-lg" />
+      <FadeLabel show={!collapsed} className="min-w-0 flex-1">
+        <p className="truncate text-xs font-bold text-main transition-colors duration-150 group-hover:text-primary-cyan motion-reduce:transition-none">
+          {displayName}
+        </p>
+        <span className="inline-block font-mono text-[9px] font-bold uppercase tracking-wider text-sub">
+          {userRole}
+        </span>
+      </FadeLabel>
+    </Link>
+  );
+
+  const logoutButtonContent = (
+    <button
+      type="button"
+      onClick={() => setLogoutModalOpen(true)}
+      className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-occupied/20 bg-occupied/15 text-xs font-bold text-occupied transition-colors duration-150 hover:bg-occupied/25 motion-reduce:transition-none ${FOCUS} ${
+        collapsed ? "mx-auto size-10 px-0" : "w-full py-2.5 px-3"
+      }`}
+    >
+      <SignOut size={18} aria-hidden="true" className="shrink-0" />
+      <FadeLabel show={!collapsed}>Sign Out</FadeLabel>
+    </button>
+  );
 
   return (
     <>
@@ -226,11 +301,11 @@ export default function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside
-        className={`sticky top-0 z-40 hidden h-screen shrink-0 flex-col justify-between border-r border-border-divider bg-card-panel p-3 select-none transition-[width] duration-300 ease-in-out lg:relative lg:flex ${
+        className={`sticky top-0 z-40 hidden h-screen shrink-0 flex-col justify-between border-r border-border-divider bg-card-panel p-3 select-none transition-[width] duration-300 ease-in-out lg:flex ${
           collapsed ? "w-20" : "w-64"
         }`}
       >
-        {/* Collapse toggle — floats on the edge, same spot whether expanded or not */}
+        {/* Collapse toggle */}
         <button
           type="button"
           onClick={toggleCollapse}
@@ -246,9 +321,9 @@ export default function Sidebar() {
           </motion.span>
         </button>
 
-        <div className="space-y-6">
-          <div className="flex items-center px-1 py-1">
-            <Link to="/" className={`flex items-center gap-3 ${collapsed ? "w-full justify-center" : ""}`}>
+        <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-1">
+          <div className={`flex items-center py-1 ${collapsed ? "justify-center px-0" : "px-1"}`}>
+            <Link to="/" className={`flex items-center gap-3 ${collapsed ? "justify-center w-full" : ""}`}>
               <img src="/logo.png" alt="Logo" width={30} height={30} className="h-7 w-auto shrink-0 object-contain" />
               <FadeLabel show={!collapsed} className="flex flex-col leading-none">
                 <span translate="no" className="font-logo text-sm font-bold uppercase tracking-wider text-main">
@@ -261,76 +336,40 @@ export default function Sidebar() {
             </Link>
           </div>
 
-          <nav className="flex flex-col gap-1.5" aria-label="Desktop Sidebar Navigation">
-            {[...mainNavItems, ...secondaryNavItems].map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.path);
+          <div className="space-y-4">
+            <nav className="flex flex-col gap-1.5" aria-label="Desktop Sidebar Navigation">
+              {mainNavItems.map(renderNavItem)}
+            </nav>
 
-              const navContent = (
-                <NavLink
-                  to={item.path}
-                  className={`group relative flex items-center gap-3 rounded-xl py-2.5 text-xs font-semibold transition-colors duration-150 motion-reduce:transition-none ${FOCUS} ${
-                    collapsed ? "justify-center px-0" : "px-3"
-                  } ${
-                    active
-                      ? "border border-primary-cyan/30 bg-primary-cyan/10 text-primary-cyan"
-                      : "border border-transparent text-sub hover:bg-app-bg hover:text-main"
-                  }`}
-                >
-                  {active && <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary-cyan" />}
-                  <Icon
-                    size={20}
-                    weight={active ? "bold" : "regular"}
-                    aria-hidden="true"
-                    className={`shrink-0 transition-colors duration-150 motion-reduce:transition-none ${
-                      active ? "text-primary-cyan" : "text-sub group-hover:text-main"
-                    }`}
-                  />
-                  <FadeLabel show={!collapsed} className="truncate">
-                    {item.label}
-                  </FadeLabel>
-                </NavLink>
-              );
-
-              return collapsed ? (
-                <Tooltip key={item.path} content={item.label} position="right" delay={0.1}>
-                  {navContent}
-                </Tooltip>
-              ) : (
-                <React.Fragment key={item.path}>{navContent}</React.Fragment>
-              );
-            })}
-          </nav>
+            <div className="border-t border-border-divider/60 pt-3">
+              <FadeLabel show={!collapsed}>
+                <span className="px-2 font-mono text-[9px] font-bold uppercase tracking-wider text-sub/80 mb-1.5 block">
+                  Management
+                </span>
+              </FadeLabel>
+              <nav className="flex flex-col gap-1.5" aria-label="Desktop Sidebar Management Navigation">
+                {secondaryNavItems.map(renderNavItem)}
+              </nav>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-2 border-t border-border-divider pt-3">
-          <Link
-            to="/profile"
-            className={`group flex items-center gap-3 rounded-xl border border-border-divider bg-app-bg p-2 transition-colors duration-150 hover:border-sub/40 motion-reduce:transition-none ${FOCUS} ${
-              collapsed ? "justify-center" : ""
-            }`}
-          >
-            <UserAvatar src={photoUrl} name={displayName} className="size-8 shrink-0 rounded-lg" />
-            <FadeLabel show={!collapsed} className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold text-main transition-colors duration-150 group-hover:text-primary-cyan motion-reduce:transition-none">
-                {displayName}
-              </p>
-              <span className="inline-block font-mono text-[9px] font-bold uppercase tracking-wider text-sub">
-                {userRole}
-              </span>
-            </FadeLabel>
-          </Link>
+        <div className="space-y-2 border-t border-border-divider pt-3 shrink-0">
+          {collapsed ? (
+            <Tooltip content={displayName} position="right" delay={0.1}>
+              {profileLinkContent}
+            </Tooltip>
+          ) : (
+            profileLinkContent
+          )}
 
-          <button
-            type="button"
-            onClick={() => setLogoutModalOpen(true)}
-            className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-occupied/20 bg-occupied/10 py-2 text-xs font-bold text-occupied transition-colors duration-150 hover:bg-occupied/20 motion-reduce:transition-none ${FOCUS} ${
-              collapsed ? "px-0" : "px-3"
-            }`}
-          >
-            <SignOut size={18} aria-hidden="true" />
-            <FadeLabel show={!collapsed}>Sign Out</FadeLabel>
-          </button>
+          {collapsed ? (
+            <Tooltip content="Sign Out" position="right" delay={0.1}>
+              {logoutButtonContent}
+            </Tooltip>
+          ) : (
+            logoutButtonContent
+          )}
         </div>
       </aside>
 

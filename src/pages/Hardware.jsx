@@ -145,65 +145,64 @@ export default function Hardware() {
     <div className="mx-auto max-w-7xl space-y-6 pb-24 font-body text-main">
       {/* Header */}
       <div className="space-y-5 border-b border-border-divider/70 pb-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-main md:text-3xl">
-              Hardware & Asset Tags
-            </h1>
-            <p className="mt-1 text-xs text-sub sm:text-sm">
-              Manage lounge equipment, track station assignments, and print physical asset tags.
-            </p>
-          </div>
-
-          <Tooltip content="Add new lounge equipment">
-            <button
-              type="button"
-              onClick={() => setIsRegisterOpen(true)}
-              className={`flex items-center justify-center gap-2 rounded-xl bg-main px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-app-bg shadow-lg transition-colors hover:bg-main/90 cursor-pointer ${FOCUS}`}
-            >
-              <Plus size={16} weight="bold" aria-hidden="true" />
-              Register Hardware
-            </button>
-          </Tooltip>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-main md:text-3xl">
+            Hardware Devices & Asset Tags
+          </h1>
+          <p className="mt-1 text-xs text-sub sm:text-sm">
+            Manage lounge equipment, track station assignments, and print physical asset tags.
+          </p>
         </div>
 
-        {/* Quick Metrics */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="flex items-center justify-between rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-wider text-sub">Total Assets</p>
-              <h3 className="font-heading text-2xl font-bold text-main">{hardwareList.length}</h3>
-            </div>
-            <div className="grid size-10 place-items-center rounded-xl border border-border-divider bg-app-bg text-primary-cyan">
-              <Cpu size={20} weight="fill" aria-hidden="true" />
-            </div>
-          </div>
+        <button
+          type="button"
+          onClick={() => setIsRegisterOpen(true)}
+          className={`inline-flex items-center justify-center gap-2 self-start rounded-xl bg-main px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-app-bg shadow-sm transition-colors hover:bg-main/90 cursor-pointer sm:self-auto ${FOCUS}`}
+        >
+          <Plus size={15} weight="bold" aria-hidden="true" />
+          Register
+        </button>
+      </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-wider text-sub">Active in Stations</p>
-              <h3 className="font-heading text-2xl font-bold text-emerald-400">
-                {hardwareList.filter((i) => i.status === "active").length}
-              </h3>
-            </div>
-            <div className="grid size-10 place-items-center rounded-xl border border-border-divider bg-app-bg text-emerald-400">
-              <CheckCircle size={20} weight="fill" aria-hidden="true" />
-            </div>
+      {/* Quick Metrics */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="flex items-center justify-between rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-wider text-sub">Total Assets</p>
+            <h3 className="font-heading text-2xl font-bold text-main">{hardwareList.length}</h3>
           </div>
+          <div className="grid size-10 place-items-center rounded-xl border border-border-divider bg-app-bg text-primary-cyan">
+            <Cpu size={20} weight="fill" aria-hidden="true" />
+          </div>
+        </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-wider text-sub">In Maintenance</p>
-              <h3 className="font-heading text-2xl font-bold text-amber-400">
-                {hardwareList.filter((i) => i.status === "maintenance").length}
-              </h3>
-            </div>
-            <div className="grid size-10 place-items-center rounded-xl border border-border-divider bg-app-bg text-amber-400">
-              <WarningCircle size={20} weight="fill" aria-hidden="true" />
-            </div>
+        <div className="flex items-center justify-between rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-wider text-sub">Active in Stations</p>
+            <h3 className="font-heading text-2xl font-bold text-emerald-400">
+              {hardwareList.filter((i) => i.status === "active").length}
+            </h3>
+          </div>
+          <div className="grid size-10 place-items-center rounded-xl border border-border-divider bg-app-bg text-emerald-400">
+            <CheckCircle size={20} weight="fill" aria-hidden="true" />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-wider text-sub">In Maintenance</p>
+            <h3 className="font-heading text-2xl font-bold text-amber-400">
+              {hardwareList.filter((i) => i.status === "maintenance").length}
+            </h3>
+          </div>
+          <div className="grid size-10 place-items-center rounded-xl border border-border-divider bg-app-bg text-amber-400">
+            <WarningCircle size={20} weight="fill" aria-hidden="true" />
           </div>
         </div>
       </div>
+    </div>
+
 
       {/* Tabs Switcher */}
       <div className="flex items-center gap-2 border-b border-border-divider pb-4">
