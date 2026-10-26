@@ -23,6 +23,7 @@ import RevenueReveal from "./pages/RevenueReveal";
 import AdminDashboard from './pages/admin/AdminDashboard'
 import Tasks from "./pages/Tasks";
 import Hardware from "./pages/Hardware";
+import TaskManager from "./pages/admin/TaskManager";
 
 function FullScreenLoader() {
   return (
@@ -58,11 +59,11 @@ function MainAppRoutes() {
       <Routes>
         <Route element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/screens" element={<Dashboard />} />
           <Route path="/settings/users" element={<UserManagementPage />} />
           <Route path="/settings/requests" element={<UserRequestsPage />} />
           <Route path="/logs" element={<Logs />} />
-          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/tasks" element={<TaskManager />} />
           <Route path="/hardware" element={<Hardware />} />
           <Route path="/logs/revenue" element={<RevenueReveal />} />
           <Route path="/pricing" element={<Pricing />} />

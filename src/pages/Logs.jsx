@@ -244,7 +244,7 @@ export default function Logs() {
               <h1 className="font-heading text-2xl font-bold tracking-tight text-main md:text-3xl">
                 Session Logs
               </h1>
-              <span
+              {/* <span
                 className={`flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${
                   isOwnerOrAdmin
                     ? "border-primary-cyan/40 bg-primary-cyan/10 text-primary-cyan"
@@ -253,7 +253,7 @@ export default function Logs() {
               >
                 {isOwnerOrAdmin ? <Shield size={12} weight="fill" /> : <Eye size={12} />}
                 {isOwnerOrAdmin ? "Owner View" : "Staff View"}
-              </span>
+              </span> */}
             </div>
             <p className="mt-1 text-xs text-sub sm:text-sm">
               Track and search daily gaming sessions

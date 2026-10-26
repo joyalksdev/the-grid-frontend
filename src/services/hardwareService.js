@@ -17,18 +17,18 @@ export const hardwareService = {
     return response.data;
   },
 
-  createServiceLog: async (deviceId, logData) => {
-    const response = await API.post(`/hardware/${deviceId}/service`, logData);
+  reportIssue: async (id, issueData) => {
+    const response = await API.patch(`/hardware/${id}/issue`, issueData);
     return response.data;
   },
 
-  getAllServiceLogs: async (params = {}) => {
-    const response = await API.get('/hardware/service-logs/all', { params });
+  resolveIssue: async (id, resolveData) => {
+    const response = await API.patch(`/hardware/${id}/resolve`, resolveData);
     return response.data;
   },
 
-  updateServiceLog: async (logId, logData) => {
-    const response = await API.put(`/hardware/service-logs/${logId}`, logData);
+  deleteDevice: async (id) => {
+    const response = await API.delete(`/hardware/${id}`);
     return response.data;
   }
 };

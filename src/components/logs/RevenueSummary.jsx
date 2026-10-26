@@ -48,7 +48,7 @@ function ShareRevenueSheet({ isOpen, onClose, link }) {
       isOpen={isOpen}
       onClose={onClose}
       title="Share Today's Revenue"
-      description="Send this to the owner — no need to read out numbers."
+      description="Send this to the owner no need to read out numbers."
     >
       <div className="space-y-4">
         <div>

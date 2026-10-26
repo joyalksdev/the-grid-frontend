@@ -78,10 +78,10 @@ export default function Dashboard() {
       {/* Header & metrics */}
       <div className="flex flex-col justify-between gap-5 border-b border-border-divider pb-6 md:flex-row md:items-end">
         <div>
-          <p className="mb-1.5 flex items-center gap-2 text-xs font-medium text-sub">
+          {/* <p className="mb-1.5 flex items-center gap-2 text-xs font-medium text-sub">
             <span aria-hidden="true" className="size-2 rounded-full bg-available" />
             Live Arena Floor
-          </p>
+          </p> */}
           <h1 className="font-heading text-2xl font-extrabold tracking-wide text-main sm:text-3xl">
             Station Status
           </h1>

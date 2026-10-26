@@ -1,99 +1,131 @@
 // src/pages/Hardware.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Cpu,
-  Monitor,
-  Printer,
   Plus,
   MagnifyingGlass,
-  SlidersHorizontal,
-  QrCode,
   Barcode,
-  DotsThreeVertical,
   Wrench,
   CheckCircle,
   WarningCircle,
   DesktopTower,
-  Headset,
-  GameController
+  Printer,
+  DotsThreeVertical,
+  Trash
 } from "@phosphor-icons/react";
 import { toast } from "react-hot-toast";
 
+import Dropdown from "../components/ui/Dropdown";
+import Sheet from "../components/ui/Sheet";
+import ConfirmModal from "../components/ui/ConfirmModal";
+import Tooltip from "../components/ui/Tooltip";
+import Loader from "../components/ui/Loader";
+
+import ReportIssueModal from "../components/hardware/ReportIssueModal";
+import DiagnoseModal from "../components/hardware/DiagnoseModal";
+import ResolveIssueModal from "../components/hardware/ResolveIssueModal";
+import { hardwareService } from "../services/hardwareService";
+
 const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan";
 
-// Mock Data to design and test UI flows
-const INITIAL_HARDWARE = [
-  {
-    _id: "hw_01",
-    assetId: "HW-PS5-01",
-    name: "PlayStation 5 Console #1",
-    category: "Console",
-    station: "Screen 1 (PS5 Arena)",
-    serialNumber: "PS5-8839-2049-X",
-    status: "active",
-    image: "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?auto=format&fit=crop&w=400&q=80",
-    lastMaintenance: "2026-03-10",
-  },
-  {
-    _id: "hw_02",
-    assetId: "HW-PC-04",
-    name: "Custom RTX 4080 Rig #4",
-    category: "PC Setup",
-    station: "Screen 4 (Esports PC)",
-    serialNumber: "RIG-4080-9921",
-    status: "active",
-    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?auto=format&fit=crop&w=400&q=80",
-    lastMaintenance: "2026-02-15",
-  },
-  {
-    _id: "hw_03",
-    assetId: "HW-IEM-02",
-    name: "KZ Castor Pro In-Ear Monitor",
-    category: "Audio",
-    station: "Screen 2 (PS5 Arena)",
-    serialNumber: "KZ-CSTR-5512",
-    status: "active",
-    image: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=400&q=80",
-    lastMaintenance: "2026-04-01",
-  },
-  {
-    _id: "hw_04",
-    assetId: "HW-MON-09",
-    name: "ASUS 27\" 240Hz Gaming Monitor",
-    category: "Display",
-    station: "Storage / Spare",
-    serialNumber: "ASUS-240-7719",
-    status: "maintenance",
-    image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=400&q=80",
-    lastMaintenance: "2026-01-20",
-  },
-];
-
 export default function Hardware() {
-  const [activeTab, setActiveTab] = useState("devices"); // "devices" | "studio"
-  const [hardwareList, setHardwareList] = useState(INITIAL_HARDWARE);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("devices");
+  const [hardwareList, setHardwareList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedForPrint, setSelectedForPrint] = useState([]);
 
-  // Filter logic
-  const filteredHardware = hardwareList.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.assetId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.serialNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = categoryFilter === "all" || item.category.toLowerCase() === categoryFilter.toLowerCase();
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+  // Modal / Sheet States
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isDiagnoseOpen, setIsDiagnoseOpen] = useState(false);
+  const [isResolveOpen, setIsResolveOpen] = useState(false);
+  const [deviceToDelete, setDeviceToDelete] = useState(null);
 
-    return matchesSearch && matchesCategory && matchesStatus;
+  // Form state for Sheet registration
+  const [newDevice, setNewDevice] = useState({
+    name: "",
+    category: "Console",
+    station: "Screen 1 (PS5 Arena)",
+    serialNumber: "",
+    image: "",
   });
 
-  // Metrics calculation
-  const totalCount = hardwareList.length;
-  const activeCount = hardwareList.filter((i) => i.status === "active").length;
-  const maintenanceCount = hardwareList.filter((i) => i.status === "maintenance").length;
+  // Fetch devices from backend API
+  const fetchHardware = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await hardwareService.getDevices({
+        category: categoryFilter,
+        status: statusFilter,
+        search: searchTerm,
+      });
+      setHardwareList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch hardware error:", err);
+      toast.error(err.response?.data?.message || "Failed to load hardware assets");
+    } finally {
+      setLoading(false);
+    }
+  }, [categoryFilter, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    fetchHardware();
+  }, [fetchHardware]);
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    if (!newDevice.name || !newDevice.serialNumber) return;
+
+    try {
+      const created = await hardwareService.createDevice(newDevice);
+      setHardwareList((prev) => [created, ...prev]);
+      setIsRegisterOpen(false);
+      setNewDevice({ name: "", category: "Console", station: "Screen 1 (PS5 Arena)", serialNumber: "", image: "" });
+      toast.success(`Registered ${created.name} successfully`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to register hardware");
+    }
+  };
+
+  const handleReportIssue = async (id, issueData) => {
+    try {
+      const res = await hardwareService.reportIssue(id, issueData);
+      setHardwareList((prev) =>
+        prev.map((item) => (item._id === id ? res.hardware || { ...item, status: "maintenance", activeIssue: issueData } : item))
+      );
+      toast.error("Device flagged for maintenance");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to report issue");
+    }
+  };
+
+  const handleResolveIssue = async (id, resolutionData) => {
+    try {
+      const res = await hardwareService.resolveIssue(id, resolutionData);
+      setHardwareList((prev) =>
+        prev.map((item) => (item._id === id ? res.hardware || { ...item, status: "active", activeIssue: null } : item))
+      );
+      toast.success("Hardware reactivated successfully!");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to resolve issue");
+    }
+  };
+
+  const confirmDeleteDevice = async () => {
+    if (!deviceToDelete) return;
+    try {
+      await hardwareService.deleteDevice(deviceToDelete._id);
+      setHardwareList((prev) => prev.filter((h) => h._id !== deviceToDelete._id));
+      toast.success(`Deleted ${deviceToDelete.name}`);
+      setDeviceToDelete(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete hardware");
+    }
+  };
 
   const toggleSelectForPrint = (id) => {
     setSelectedForPrint((prev) =>
@@ -102,16 +134,16 @@ export default function Hardware() {
   };
 
   const handleSelectAll = () => {
-    if (selectedForPrint.length === filteredHardware.length) {
+    if (selectedForPrint.length === hardwareList.length) {
       setSelectedForPrint([]);
     } else {
-      setSelectedForPrint(filteredHardware.map((i) => i._id));
+      setSelectedForPrint(hardwareList.map((i) => i._id));
     }
   };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-24 font-body text-main">
-      {/* Top Header & Summary Stats */}
+      {/* Header */}
       <div className="space-y-5 border-b border-border-divider/70 pb-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -119,26 +151,28 @@ export default function Hardware() {
               Hardware & Asset Tags
             </h1>
             <p className="mt-1 text-xs text-sub sm:text-sm">
-              Track lounge equipment, monitor station assignments, and generate physical barcode labels.
+              Manage lounge equipment, track station assignments, and print physical asset tags.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => toast.success("Open Register Hardware Modal")}
-            className={`flex items-center gap-2 rounded-xl bg-primary-cyan px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-app-bg shadow-lg transition-colors hover:bg-primary-cyan/90 cursor-pointer touch-manipulation ${FOCUS}`}
-          >
-            <Plus size={16} weight="bold" aria-hidden="true" />
-            Register Hardware
-          </button>
+          <Tooltip content="Add new lounge equipment">
+            <button
+              type="button"
+              onClick={() => setIsRegisterOpen(true)}
+              className={`flex items-center justify-center gap-2 rounded-xl bg-main px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-app-bg shadow-lg transition-colors hover:bg-main/90 cursor-pointer ${FOCUS}`}
+            >
+              <Plus size={16} weight="bold" aria-hidden="true" />
+              Register Hardware
+            </button>
+          </Tooltip>
         </div>
 
-        {/* Quick Metrics Cards */}
+        {/* Quick Metrics */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="flex items-center justify-between rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-wider text-sub">Total Assets</p>
-              <h3 className="font-heading text-2xl font-bold text-main">{totalCount}</h3>
+              <h3 className="font-heading text-2xl font-bold text-main">{hardwareList.length}</h3>
             </div>
             <div className="grid size-10 place-items-center rounded-xl border border-border-divider bg-app-bg text-primary-cyan">
               <Cpu size={20} weight="fill" aria-hidden="true" />
@@ -148,7 +182,9 @@ export default function Hardware() {
           <div className="flex items-center justify-between rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-wider text-sub">Active in Stations</p>
-              <h3 className="font-heading text-2xl font-bold text-emerald-400">{activeCount}</h3>
+              <h3 className="font-heading text-2xl font-bold text-emerald-400">
+                {hardwareList.filter((i) => i.status === "active").length}
+              </h3>
             </div>
             <div className="grid size-10 place-items-center rounded-xl border border-border-divider bg-app-bg text-emerald-400">
               <CheckCircle size={20} weight="fill" aria-hidden="true" />
@@ -158,7 +194,9 @@ export default function Hardware() {
           <div className="flex items-center justify-between rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-wider text-sub">In Maintenance</p>
-              <h3 className="font-heading text-2xl font-bold text-amber-400">{maintenanceCount}</h3>
+              <h3 className="font-heading text-2xl font-bold text-amber-400">
+                {hardwareList.filter((i) => i.status === "maintenance").length}
+              </h3>
             </div>
             <div className="grid size-10 place-items-center rounded-xl border border-border-divider bg-app-bg text-amber-400">
               <WarningCircle size={20} weight="fill" aria-hidden="true" />
@@ -167,7 +205,7 @@ export default function Hardware() {
         </div>
       </div>
 
-      {/* Tab Navigation Switcher */}
+      {/* Tabs Switcher */}
       <div className="flex items-center gap-2 border-b border-border-divider pb-4">
         <button
           type="button"
@@ -192,14 +230,13 @@ export default function Hardware() {
           } ${FOCUS}`}
         >
           <Barcode size={15} weight="fill" aria-hidden="true" />
-          Sticker Studio {selectedForPrint.length > 0 && `(${selectedForPrint.length} selected)`}
+          Sticker Studio {selectedForPrint.length > 0 && `(${selectedForPrint.length})`}
         </button>
       </div>
 
-      {/* TAB 1: DEVICES INVENTORY GRID */}
+      {/* Tab A: Devices */}
       {activeTab === "devices" && (
         <div className="space-y-4">
-          {/* Filter Toolbar */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="relative flex-1 max-w-md">
               <MagnifyingGlass
@@ -209,19 +246,18 @@ export default function Hardware() {
               />
               <input
                 type="text"
-                placeholder="Search by name, asset ID, or serial..."
+                placeholder="Search name, tag ID, or serial..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full h-10 rounded-xl border border-border-divider bg-card-panel pl-10 pr-4 text-xs font-medium text-main placeholder:text-sub/60 ${FOCUS}`}
+                className={`w-full h-10 rounded-xl border border-border-divider bg-card-panel pl-10 pr-4 text-xs text-main placeholder:text-sub/60 ${FOCUS}`}
               />
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-              {/* Category Filter */}
+            <div className="flex items-center gap-2">
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className={`h-10 rounded-xl border border-border-divider bg-card-panel px-3 text-xs font-semibold text-main cursor-pointer ${FOCUS}`}
+                className={`h-10 rounded-xl border border-border-divider bg-card-panel px-3 text-xs text-main cursor-pointer ${FOCUS}`}
               >
                 <option value="all">All Categories</option>
                 <option value="console">Consoles</option>
@@ -230,11 +266,10 @@ export default function Hardware() {
                 <option value="display">Displays</option>
               </select>
 
-              {/* Status Filter */}
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className={`h-10 rounded-xl border border-border-divider bg-card-panel px-3 text-xs font-semibold text-main cursor-pointer ${FOCUS}`}
+                className={`h-10 rounded-xl border border-border-divider bg-card-panel px-3 text-xs text-main cursor-pointer ${FOCUS}`}
               >
                 <option value="all">All Statuses</option>
                 <option value="active">Active</option>
@@ -243,9 +278,11 @@ export default function Hardware() {
             </div>
           </div>
 
-          {/* Cards Grid */}
-          {filteredHardware.length === 0 ? (
-            <div className="flex flex-col items-center justify-center space-y-3 rounded-2xl border border-dashed border-border-divider bg-card-panel/40 p-12 text-center">
+          {/* Cards Grid / Loader */}
+          {loading ? (
+            <Loader variant="skeleton-card" lines={3} />
+          ) : hardwareList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center space-y-3 rounded-2xl border border-dashed border-border-divider bg-card-panel/40 p-16 text-center">
               <div className="grid size-12 place-items-center rounded-2xl border border-border-divider bg-app-bg text-sub">
                 <Cpu size={24} aria-hidden="true" />
               </div>
@@ -254,13 +291,12 @@ export default function Hardware() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredHardware.map((item) => (
+              {hardwareList.map((item) => (
                 <div
                   key={item._id}
                   className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border-divider bg-card-panel p-4 shadow-sm transition-all hover:border-primary-cyan/40"
                 >
                   <div className="space-y-3">
-                    {/* Top Row: Asset Tag & Status */}
                     <div className="flex items-center justify-between">
                       <span className="rounded-md border border-border-divider bg-app-bg px-2 py-0.5 font-mono text-[11px] font-bold text-primary-cyan">
                         {item.assetId}
@@ -281,12 +317,11 @@ export default function Hardware() {
                       </span>
                     </div>
 
-                    {/* Image & Title Preview */}
                     <div className="flex items-center gap-3">
                       <div className="size-16 shrink-0 overflow-hidden rounded-xl border border-border-divider bg-app-bg">
                         <img src={item.image} alt={item.name} className="size-full object-cover" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="font-mono text-[10px] uppercase tracking-wider text-sub">
                           {item.category}
                         </span>
@@ -297,22 +332,55 @@ export default function Hardware() {
                           📍 {item.station}
                         </p>
                       </div>
+
+                      <Dropdown
+                        trigger={
+                          <button
+                            type="button"
+                            className="grid size-8 place-items-center rounded-lg text-sub hover:bg-app-bg hover:text-main"
+                          >
+                            <DotsThreeVertical size={18} weight="bold" />
+                          </button>
+                        }
+                        items={[
+                          {
+                            label: "Self-Diagnose",
+                            icon: <Wrench size={14} />,
+                            onClick: () => {
+                              setSelectedDevice(item);
+                              setIsDiagnoseOpen(true);
+                            },
+                          },
+                          {
+                            label: "Report Issue",
+                            icon: <WarningCircle size={14} />,
+                            danger: true,
+                            onClick: () => {
+                              setSelectedDevice(item);
+                              setIsReportOpen(true);
+                            },
+                          },
+                          { type: "divider" },
+                          {
+                            label: "Remove Device",
+                            icon: <Trash size={14} />,
+                            danger: true,
+                            onClick: () => setDeviceToDelete(item),
+                          },
+                        ]}
+                      />
                     </div>
 
-                    {/* Serial & Specs */}
-                    <div className="rounded-xl border border-border-divider/60 bg-app-bg/60 p-2.5 space-y-1 font-mono text-[11px] text-sub">
-                      <div className="flex justify-between">
-                        <span>Serial:</span>
-                        <span className="text-main font-semibold">{item.serialNumber}</span>
+                    {item.activeIssue && (
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] space-y-1">
+                        <span className="font-mono font-bold uppercase text-amber-400">
+                          Active Issue:
+                        </span>
+                        <p className="text-main leading-tight">{item.activeIssue.description}</p>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Last Serviced:</span>
-                        <span className="text-main">{item.lastMaintenance}</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
-                  {/* Actions Footer */}
                   <div className="mt-4 flex items-center justify-between border-t border-border-divider/60 pt-3">
                     <label className="flex items-center gap-2 cursor-pointer font-mono text-xs text-sub hover:text-main">
                       <input
@@ -321,20 +389,38 @@ export default function Hardware() {
                         onChange={() => toggleSelectForPrint(item._id)}
                         className="rounded border-border-divider bg-app-bg text-primary-cyan focus:ring-0 cursor-pointer size-4"
                       />
-                      Select for Sticker
+                      Sticker
                     </label>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedForPrint([item._id]);
-                        setActiveTab("studio");
-                      }}
-                      className="flex items-center gap-1 font-mono text-xs font-semibold text-primary-cyan hover:underline cursor-pointer"
-                    >
-                      <Barcode size={14} aria-hidden="true" />
-                      Print Tag
-                    </button>
+                    {item.status === "maintenance" ? (
+                      <Tooltip content="Serviced & ready for station rotation">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDevice(item);
+                            setIsResolveOpen(true);
+                          }}
+                          className="flex items-center gap-1 font-mono text-xs font-semibold text-emerald-400 hover:underline cursor-pointer"
+                        >
+                          <CheckCircle size={14} aria-hidden="true" />
+                          Resolve & Reactivate
+                        </button>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip content="Flag a hardware defect or issue">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDevice(item);
+                            setIsReportOpen(true);
+                          }}
+                          className="flex items-center gap-1 font-mono text-xs font-semibold text-amber-400 hover:underline cursor-pointer"
+                        >
+                          <Wrench size={14} aria-hidden="true" />
+                          Report Issue
+                        </button>
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
               ))}
@@ -343,7 +429,7 @@ export default function Hardware() {
         </div>
       )}
 
-      {/* TAB 2: STICKER STUDIO */}
+      {/* Tab B: Sticker Studio */}
       {activeTab === "studio" && (
         <div className="space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border-divider bg-card-panel p-5">
@@ -359,13 +445,13 @@ export default function Hardware() {
                 onClick={handleSelectAll}
                 className={`h-9 px-3 rounded-xl border border-border-divider bg-app-bg text-xs font-semibold text-sub hover:text-main cursor-pointer ${FOCUS}`}
               >
-                {selectedForPrint.length === filteredHardware.length ? "Deselect All" : "Select All Filtered"}
+                {selectedForPrint.length === hardwareList.length ? "Deselect All" : "Select All"}
               </button>
               <button
                 type="button"
                 disabled={selectedForPrint.length === 0}
-                onClick={() => toast.success(`Sending ${selectedForPrint.length} tags to thermal printer...`)}
-                className={`flex items-center gap-2 h-9 px-4 rounded-xl bg-primary-cyan text-xs font-bold uppercase tracking-wider text-app-bg shadow-md cursor-pointer hover:bg-primary-cyan/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS}`}
+                onClick={() => toast.success(`Printing ${selectedForPrint.length} thermal tags...`)}
+                className={`flex items-center gap-2 h-9 px-4 rounded-xl bg-main text-xs font-bold uppercase tracking-wider text-app-bg shadow-md cursor-pointer hover:bg-main/90 disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS}`}
               >
                 <Printer size={15} weight="bold" aria-hidden="true" />
                 Print Selected ({selectedForPrint.length})
@@ -373,7 +459,6 @@ export default function Hardware() {
             </div>
           </div>
 
-          {/* Sticker Preview Canvas */}
           {selectedForPrint.length === 0 ? (
             <div className="flex flex-col items-center justify-center space-y-3 rounded-2xl border border-dashed border-border-divider bg-card-panel/40 p-16 text-center">
               <div className="grid size-12 place-items-center rounded-2xl border border-border-divider bg-app-bg text-sub">
@@ -381,7 +466,7 @@ export default function Hardware() {
               </div>
               <h3 className="font-heading text-base font-bold text-main">No hardware selected for printing</h3>
               <p className="text-xs text-sub max-w-xs">
-                Go back to the Devices tab and check items, or click "Select All Filtered" above.
+                Select checkboxes in the Devices tab or click "Select All" above.
               </p>
             </div>
           ) : (
@@ -415,7 +500,6 @@ export default function Hardware() {
                       <p className="text-[10px] text-zinc-500">S/N: {item.serialNumber}</p>
                     </div>
 
-                    {/* Barcode Graphic Placeholder */}
                     <div className="flex flex-col items-center justify-center pt-2 border-t border-zinc-200 space-y-1">
                       <div className="w-full h-10 bg-zinc-900 flex items-center justify-center text-white tracking-[6px] text-xs font-bold font-mono">
                         ||| | |||| || |
@@ -429,6 +513,147 @@ export default function Hardware() {
           )}
         </div>
       )}
+
+      {/* Sheet Component for Registering Hardware */}
+      <Sheet
+        isOpen={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        title="Register Hardware"
+        description="Add a new device or asset to lounge inventory."
+        footer={
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsRegisterOpen(false)}
+              className="h-11 px-4 rounded-xl border border-border-divider bg-app-bg font-mono text-xs font-bold text-main hover:bg-card-panel cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="register-hardware-form"
+              className="h-11 px-5 rounded-xl bg-main text-app-bg font-mono text-xs font-bold uppercase tracking-wider hover:bg-main/90 cursor-pointer shadow-md"
+            >
+              Save Hardware
+            </button>
+          </div>
+        }
+      >
+        <form id="register-hardware-form" onSubmit={handleRegisterSubmit} className="space-y-4 font-body text-xs">
+          <div>
+            <label className="block font-mono text-[11px] font-bold uppercase tracking-wider text-sub mb-1">
+              Device Name *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. PlayStation 5 Console #5"
+              value={newDevice.name}
+              onChange={(e) => setNewDevice({ ...newDevice, name: e.target.value })}
+              className="w-full h-11 rounded-xl border border-border-divider bg-app-bg px-3.5 text-main placeholder:text-sub/50 focus:border-primary-cyan focus:outline-none focus:ring-1 focus:ring-primary-cyan"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-wider text-sub mb-1">
+                Category
+              </label>
+              <select
+                value={newDevice.category}
+                onChange={(e) => setNewDevice({ ...newDevice, category: e.target.value })}
+                className="w-full h-11 rounded-xl border border-border-divider bg-app-bg px-3.5 text-main focus:border-primary-cyan focus:outline-none focus:ring-1 focus:ring-primary-cyan"
+              >
+                <option value="Console">Console</option>
+                <option value="PC Setup">PC Setup</option>
+                <option value="Audio">Audio / IEM</option>
+                <option value="Display">Display</option>
+                <option value="Peripheral">Peripheral / Controller</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-wider text-sub mb-1">
+                Station Assignment
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Screen 3"
+                value={newDevice.station}
+                onChange={(e) => setNewDevice({ ...newDevice, station: e.target.value })}
+                className="w-full h-11 rounded-xl border border-border-divider bg-app-bg px-3.5 text-main placeholder:text-sub/50 focus:border-primary-cyan focus:outline-none focus:ring-1 focus:ring-primary-cyan"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-mono text-[11px] font-bold uppercase tracking-wider text-sub mb-1">
+              Serial Number *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. PS5-8839-2049-X"
+              value={newDevice.serialNumber}
+              onChange={(e) => setNewDevice({ ...newDevice, serialNumber: e.target.value })}
+              className="w-full h-11 rounded-xl border border-border-divider bg-app-bg px-3.5 font-mono text-main placeholder:text-sub/50 focus:border-primary-cyan focus:outline-none focus:ring-1 focus:ring-primary-cyan"
+            />
+          </div>
+
+          <div>
+            <label className="block font-mono text-[11px] font-bold uppercase tracking-wider text-sub mb-1">
+              Image URL (Optional)
+            </label>
+            <input
+              type="url"
+              placeholder="https://..."
+              value={newDevice.image}
+              onChange={(e) => setNewDevice({ ...newDevice, image: e.target.value })}
+              className="w-full h-11 rounded-xl border border-border-divider bg-app-bg px-3.5 text-main placeholder:text-sub/50 focus:border-primary-cyan focus:outline-none focus:ring-1 focus:ring-primary-cyan"
+            />
+          </div>
+        </form>
+      </Sheet>
+
+      {/* Confirmation Modal for Deletion */}
+      <ConfirmModal
+        isOpen={!!deviceToDelete}
+        onClose={() => setDeviceToDelete(null)}
+        onConfirm={confirmDeleteDevice}
+        title="Delete Hardware Asset"
+        message={`Are you sure you want to permanently remove ${deviceToDelete?.name} (${deviceToDelete?.assetId})? This action cannot be undone.`}
+        confirmText="Delete Asset"
+        cancelText="Cancel"
+        danger={true}
+      />
+
+      {/* Issue & Diagnose Modals */}
+      <ReportIssueModal
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        device={selectedDevice}
+        onReportIssue={handleReportIssue}
+      />
+
+      <DiagnoseModal
+        isOpen={isDiagnoseOpen}
+        onClose={() => setIsDiagnoseOpen(false)}
+        device={selectedDevice}
+        onCompleteDiagnosis={(id) => {
+          const device = hardwareList.find((h) => h._id === id);
+          if (device) {
+            setSelectedDevice(device);
+            setIsResolveOpen(true);
+          }
+        }}
+      />
+
+      <ResolveIssueModal
+        isOpen={isResolveOpen}
+        onClose={() => setIsResolveOpen(false)}
+        device={selectedDevice}
+        onResolveIssue={handleResolveIssue}
+      />
     </div>
   );
 }
