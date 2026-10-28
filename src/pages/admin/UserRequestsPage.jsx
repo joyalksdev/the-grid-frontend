@@ -1,3 +1,4 @@
+// src/pages/admin/UserRequestsPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { 
   Link, 
@@ -16,9 +17,9 @@ import {
   Phone,
   ShieldPlus
 } from "@phosphor-icons/react";
-import { toast } from "react-hot-toast";
 import { userService } from "../../services/userService";
 import { socket } from "../../services/socket";
+import { notify } from "../../utils/toastController";
 
 export default function UserRequestsPage() {
   // Form State
@@ -37,17 +38,16 @@ export default function UserRequestsPage() {
   const [generating, setGenerating] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
-  // 1. Fetch Pending Requests (Inactive Users awaiting admin approval)
+  // 1. Fetch Pending Requests
   const fetchPendingRequests = useCallback(async () => {
     setLoadingPending(true);
     try {
       const response = await userService.getUsers({ status: "inactive" });
       const data = response?.users || response?.data || response || [];
-      // Filter out inactive/unapproved accounts
       const filtered = Array.isArray(data) ? data.filter((u) => u.status === "inactive" || !u.isActive) : [];
       setPendingRequests(filtered);
     } catch (error) {
-      toast.error("Failed to load pending access requests");
+      notify.error("Failed to load pending access requests");
       console.error("Error fetching pending requests:", error);
     } finally {
       setLoadingPending(false);
@@ -68,16 +68,14 @@ export default function UserRequestsPage() {
     }
   }, []);
 
-  // Initial Load & Socket Listener for Real-time Onboarding Updates
+  // Initial Load & Socket Listener
   useEffect(() => {
     fetchPendingRequests();
     fetchActiveInvites();
 
     if (socket) {
       const handleUserOnboarded = (data) => {
-        toast.success(`New request: ${data?.name || "A new user"} completed onboarding!`, {
-          icon: "🚀",
-        });
+        notify.success(`New request: ${data?.name || "A new user"} completed onboarding!`);
         fetchPendingRequests();
         fetchActiveInvites();
       };
@@ -115,10 +113,10 @@ export default function UserRequestsPage() {
         fetchActiveInvites();
       }
 
-      toast.success("Registration invite link generated!");
+      notify.success("Registration invite link generated!");
     } catch (error) {
       const errMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message || "Failed to generate invite link";
-      toast.error(errMessage);
+      notify.error(errMessage);
     } finally {
       setGenerating(false);
     }
@@ -129,7 +127,7 @@ export default function UserRequestsPage() {
     if (!generatedLink) return;
     navigator.clipboard.writeText(generatedLink);
     setCopied(true);
-    toast.success("Invite link copied to clipboard!");
+    notify.success("Invite link copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -139,10 +137,10 @@ export default function UserRequestsPage() {
     try {
       await userService.toggleUserStatus(userId);
       setPendingRequests((prev) => prev.filter((r) => (r._id || r.id) !== userId));
-      toast.success(`Approved account for ${name}`);
+      notify.success(`Approved account for ${name}`);
     } catch (error) {
       const errMessage = error?.response?.data?.message || error?.response?.data?.error || `Failed to approve ${name}`;
-      toast.error(errMessage);
+      notify.error(errMessage);
     } finally {
       setActionLoadingId(null);
     }
@@ -156,10 +154,10 @@ export default function UserRequestsPage() {
     try {
       await userService.deleteUser(userId);
       setPendingRequests((prev) => prev.filter((r) => (r._id || r.id) !== userId));
-      toast.error(`Rejected access request from ${name}`);
+      notify.error(`Rejected access request from ${name}`);
     } catch (error) {
       const errMessage = error?.response?.data?.message || error?.response?.data?.error || `Failed to reject request`;
-      toast.error(errMessage);
+      notify.error(errMessage);
     } finally {
       setActionLoadingId(null);
     }
@@ -171,9 +169,9 @@ export default function UserRequestsPage() {
     try {
       await userService.revokeInvite(inviteId);
       setActiveInvites((prev) => prev.filter((inv) => (inv._id || inv.id) !== inviteId));
-      toast.error("Invite token revoked");
+      notify.error("Invite token revoked");
     } catch (error) {
-      toast.error("Failed to revoke invite token");
+      notify.error("Failed to revoke invite token");
     } finally {
       setActionLoadingId(null);
     }

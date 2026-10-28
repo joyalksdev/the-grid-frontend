@@ -10,8 +10,8 @@ import {
   WhatsappLogo,
   LinkSimple,
 } from "@phosphor-icons/react";
-import { toast } from "react-hot-toast";
 import { formatINR } from "../../utils/format";
+import { notify } from "../../utils/toastController";
 import Sheet from "../ui/Sheet";
 
 const FOCUS =
@@ -36,7 +36,7 @@ function ShareRevenueSheet({ isOpen, onClose, link }) {
 
   const copy = () => {
     navigator.clipboard.writeText(link);
-    toast.success("Link copied");
+    notify.success("Link copied");
   };
 
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(

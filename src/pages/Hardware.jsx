@@ -13,13 +13,13 @@ import {
   DotsThreeVertical,
   Trash
 } from "@phosphor-icons/react";
-import { toast } from "react-hot-toast";
 
 import Dropdown from "../components/ui/Dropdown";
 import Sheet from "../components/ui/Sheet";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import Tooltip from "../components/ui/Tooltip";
 import Loader from "../components/ui/Loader";
+import { notify } from "../utils/toastController";
 
 import ReportIssueModal from "../components/hardware/ReportIssueModal";
 import DiagnoseModal from "../components/hardware/DiagnoseModal";
@@ -66,7 +66,7 @@ export default function Hardware() {
       setHardwareList(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Fetch hardware error:", err);
-      toast.error(err.response?.data?.message || "Failed to load hardware assets");
+      notify.error(err.response?.data?.message || "Failed to load hardware assets");
     } finally {
       setLoading(false);
     }
@@ -85,9 +85,9 @@ export default function Hardware() {
       setHardwareList((prev) => [created, ...prev]);
       setIsRegisterOpen(false);
       setNewDevice({ name: "", category: "Console", station: "Screen 1 (PS5 Arena)", serialNumber: "", image: "" });
-      toast.success(`Registered ${created.name} successfully`);
+      notify.success(`Registered ${created.name} successfully`);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to register hardware");
+      notify.error(err.response?.data?.message || "Failed to register hardware");
     }
   };
 
@@ -97,9 +97,9 @@ export default function Hardware() {
       setHardwareList((prev) =>
         prev.map((item) => (item._id === id ? res.hardware || { ...item, status: "maintenance", activeIssue: issueData } : item))
       );
-      toast.error("Device flagged for maintenance");
+      notify.error("Device flagged for maintenance");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to report issue");
+      notify.error(err.response?.data?.message || "Failed to report issue");
     }
   };
 
@@ -109,9 +109,9 @@ export default function Hardware() {
       setHardwareList((prev) =>
         prev.map((item) => (item._id === id ? res.hardware || { ...item, status: "active", activeIssue: null } : item))
       );
-      toast.success("Hardware reactivated successfully!");
+      notify.success("Hardware reactivated successfully!");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to resolve issue");
+      notify.error(err.response?.data?.message || "Failed to resolve issue");
     }
   };
 
@@ -120,10 +120,10 @@ export default function Hardware() {
     try {
       await hardwareService.deleteDevice(deviceToDelete._id);
       setHardwareList((prev) => prev.filter((h) => h._id !== deviceToDelete._id));
-      toast.success(`Deleted ${deviceToDelete.name}`);
+      notify.success(`Deleted ${deviceToDelete.name}`);
       setDeviceToDelete(null);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete hardware");
+      notify.error(err.response?.data?.message || "Failed to delete hardware");
     }
   };
 
@@ -449,7 +449,7 @@ export default function Hardware() {
               <button
                 type="button"
                 disabled={selectedForPrint.length === 0}
-                onClick={() => toast.success(`Printing ${selectedForPrint.length} thermal tags...`)}
+                onClick={() => notify.success(`Printing ${selectedForPrint.length} thermal tags...`)}
                 className={`flex items-center gap-2 h-9 px-4 rounded-xl bg-main text-xs font-bold uppercase tracking-wider text-app-bg shadow-md cursor-pointer hover:bg-main/90 disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS}`}
               >
                 <Printer size={15} weight="bold" aria-hidden="true" />

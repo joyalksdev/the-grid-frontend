@@ -14,10 +14,10 @@ import {
   Trophy,
   Monitor
 } from "@phosphor-icons/react";
-import { toast } from "react-hot-toast";
 import { logService } from "../../services/logService";
 import { socket } from "../../services/socket";
 import { formatINR } from "../../utils/format";
+import { notify } from "../../utils/toastController";
 import Loader from "../../components/ui/Loader";
 
 // Modular Subcomponents
@@ -43,14 +43,14 @@ function MetricCard({ title, value, subtext, icon: Icon, toneColor }) {
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      transition={{ duration: 0.15 }}
-      className="relative overflow-hidden rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm backdrop-blur-md"
+      transition={{ duration: 0.15, ease: "easeOut" }}
+      className="relative overflow-hidden rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm backdrop-blur-md transition-colors hover:border-border-divider"
     >
       <div className="flex items-center justify-between">
-        <span className="font-mono text-xs font-semibold uppercase tracking-wider text-sub">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-sub">
           {title}
         </span>
-        <div className={`grid size-9 place-items-center rounded-xl bg-app-bg/80 ${toneColor}`}>
+        <div className={`grid size-9 place-items-center rounded-xl border border-border-divider bg-app-bg ${toneColor}`}>
           <Icon size={18} weight="bold" />
         </div>
       </div>
@@ -80,7 +80,7 @@ export default function AnalyticsDashboard() {
       const data = await logService.getAnalytics({ range: selectedRange });
       setAnalyticsData(data);
     } catch (error) {
-      toast.error("Failed to load analytics dashboard data");
+      notify.error("Failed to load analytics dashboard data");
     } finally {
       setLoading(false);
     }
@@ -141,7 +141,7 @@ export default function AnalyticsDashboard() {
 
   const handleExportFullReport = () => {
     if (!analyticsData) {
-      toast.error("No data available to export");
+      notify.error("No data available to export");
       return;
     }
 
@@ -168,7 +168,7 @@ export default function AnalyticsDashboard() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Analytics report exported successfully");
+    notify.success("Analytics report exported successfully");
   };
 
   return (
@@ -176,11 +176,11 @@ export default function AnalyticsDashboard() {
       {/* Top Header */}
       <div className="flex flex-col gap-4 border-b border-border-divider/80 pb-5 md:flex-row md:items-center md:justify-between">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <h1 className="font-heading text-2xl font-bold tracking-tight text-main md:text-3xl">
               Business Analytics
             </h1>
-            <span className="flex items-center gap-1 rounded-full border border-primary-cyan/30 bg-primary-cyan/10 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary-cyan">
+            <span className="flex items-center gap-1 rounded-full border border-primary-cyan/30 bg-primary-cyan/10 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary-cyan shadow-sm">
               <Sparkle size={12} weight="fill" /> Owner Control
             </span>
           </div>
@@ -210,7 +210,7 @@ export default function AnalyticsDashboard() {
           <button
             type="button"
             onClick={fetchAnalyticsData}
-            className={`grid size-10 place-items-center rounded-xl border border-border-divider/80 bg-card-panel text-sub transition-colors hover:text-main ${FOCUS_RING}`}
+            className={`grid size-10 place-items-center rounded-xl border border-border-divider/80 bg-card-panel text-sub transition-colors hover:border-sub hover:text-main cursor-pointer ${FOCUS_RING}`}
             title="Refresh analytics data"
           >
             <ArrowClockwise size={18} />
@@ -219,7 +219,7 @@ export default function AnalyticsDashboard() {
           <button
             type="button"
             onClick={handleExportFullReport}
-            className={`flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-main px-4 font-mono text-xs font-bold text-app-bg transition-colors hover:bg-main/90 ${FOCUS_RING}`}
+            className={`flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-main px-4 font-mono text-xs font-bold text-app-bg shadow-sm transition-colors hover:bg-main/90 ${FOCUS_RING}`}
           >
             <DownloadSimple size={16} weight="bold" />
             <span>Export CSV</span>
@@ -236,7 +236,7 @@ export default function AnalyticsDashboard() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
             className="space-y-6"
           >
             {/* Live Console Screens Grid */}
@@ -277,7 +277,7 @@ export default function AnalyticsDashboard() {
             {/* Row 1: Chart & Payment Split */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
               {/* Daily Revenue Bar Chart */}
-              <div className="space-y-4 rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm lg:col-span-8">
+              <div className="space-y-4 rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm lg:col-span-8 transition-colors hover:border-border-divider">
                 <div className="flex items-center justify-between border-b border-border-divider/60 pb-3">
                   <div>
                     <h2 className="font-heading text-base font-bold text-main">Revenue Trend</h2>
@@ -292,7 +292,7 @@ export default function AnalyticsDashboard() {
               </div>
 
               {/* Payment Split Card */}
-              <div className="flex flex-col justify-between space-y-4 rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm lg:col-span-4">
+              <div className="flex flex-col justify-between space-y-4 rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm lg:col-span-4 transition-colors hover:border-border-divider">
                 <div className="border-b border-border-divider/60 pb-3">
                   <h2 className="font-heading text-base font-bold text-main">Payment Split</h2>
                   <p className="text-xs text-sub">Cash vs digital UPI collections</p>
@@ -306,7 +306,7 @@ export default function AnalyticsDashboard() {
                       </span>
                       <span className="font-bold text-emerald-400">{formatINR(summary.cashRevenue)}</span>
                     </div>
-                    <div className="h-2.5 w-full overflow-hidden rounded-full border border-border-divider bg-app-bg">
+                    <div className="h-2.5 w-full overflow-hidden rounded-full border border-border-divider bg-app-bg p-0.5">
                       <div
                         style={{
                           width: `${
@@ -315,7 +315,7 @@ export default function AnalyticsDashboard() {
                               : 0
                           }%`
                         }}
-                        className="h-full bg-emerald-400 transition-all duration-300"
+                        className="h-full rounded-full bg-emerald-400 transition-all duration-300"
                       />
                     </div>
                   </div>
@@ -327,7 +327,7 @@ export default function AnalyticsDashboard() {
                       </span>
                       <span className="font-bold text-sky-400">{formatINR(summary.upiRevenue)}</span>
                     </div>
-                    <div className="h-2.5 w-full overflow-hidden rounded-full border border-border-divider bg-app-bg">
+                    <div className="h-2.5 w-full overflow-hidden rounded-full border border-border-divider bg-app-bg p-0.5">
                       <div
                         style={{
                           width: `${
@@ -336,13 +336,13 @@ export default function AnalyticsDashboard() {
                               : 0
                           }%`
                         }}
-                        className="h-full bg-sky-400 transition-all duration-300"
+                        className="h-full rounded-full bg-sky-400 transition-all duration-300"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-1 rounded-xl border border-border-divider/60 bg-app-bg/50 p-3 font-mono text-xs text-sub">
+                <div className="space-y-1.5 rounded-xl border border-border-divider/60 bg-app-bg/50 p-3 font-mono text-xs text-sub">
                   <div className="flex justify-between">
                     <span>Digital Ratio:</span>
                     <span className="font-bold text-main">
@@ -365,25 +365,29 @@ export default function AnalyticsDashboard() {
 
             {/* Row 2: Station Occupancy & Top Players */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              <div className="space-y-4 rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm lg:col-span-7">
+              <div className="space-y-4 rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm lg:col-span-7 transition-colors hover:border-border-divider">
                 <div className="flex items-center justify-between border-b border-border-divider/60 pb-3">
                   <div>
                     <h2 className="font-heading text-base font-bold text-main">Station Occupancy & Revenue</h2>
                     <p className="text-xs text-sub">Performance metrics by console station</p>
                   </div>
-                  <Monitor size={20} className="text-primary-cyan" />
+                  <div className="grid size-8 place-items-center rounded-lg border border-border-divider bg-app-bg text-primary-cyan">
+                    <Monitor size={16} weight="fill" />
+                  </div>
                 </div>
 
                 <StationDistribution stationData={stationList} />
               </div>
 
-              <div className="space-y-4 rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm lg:col-span-5">
+              <div className="space-y-4 rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm lg:col-span-5 transition-colors hover:border-border-divider">
                 <div className="flex items-center justify-between border-b border-border-divider/60 pb-3">
                   <div>
                     <h2 className="font-heading text-base font-bold text-main">Top Gamers Leaderboard</h2>
                     <p className="text-xs text-sub">High value players by total spend</p>
                   </div>
-                  <Trophy size={20} className="text-amber-400" />
+                  <div className="grid size-8 place-items-center rounded-lg border border-border-divider bg-app-bg text-amber-400">
+                    <Trophy size={16} weight="fill" />
+                  </div>
                 </div>
 
                 <TopPlayersLeaderboard players={topPlayers} />

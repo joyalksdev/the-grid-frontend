@@ -13,10 +13,10 @@ import {
   User,
   Monitor
 } from "@phosphor-icons/react";
-import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { logService } from "../services/logService";
 import { formatINR } from "../utils/format";
+import { notify } from "../utils/toastController";
 import Dropdown from "../components/ui/Dropdown";
 import Loader from "../components/ui/Loader";
 import ConfirmModal from "../components/ui/ConfirmModal";
@@ -124,14 +124,13 @@ export default function Logs() {
       if (screenFilter !== "all") params.screen = screenFilter;
 
       const data = await logService.getLogs(params);
-      console.log(data)
       const safeLogs = Array.isArray(data) ? data : [];
       setAllLogs(safeLogs);
       setPage(1);
       setDisplayedLogs(safeLogs.slice(0, PAGE_SIZE));
       setHasMore(safeLogs.length > PAGE_SIZE);
     } catch (error) {
-      toast.error(error.response?.data?.error || "Failed to load session logs");
+      notify.error(error.response?.data?.error || "Failed to load session logs");
     } finally {
       setLoading(false);
     }
@@ -189,10 +188,10 @@ export default function Logs() {
     if (!logToDelete) return;
     try {
       await logService.deleteLog(logToDelete);
-      toast.success("Log record deleted");
+      notify.success("Log record deleted");
       fetchLogs();
     } catch (error) {
-      toast.error(error.response?.data?.error || "Failed to delete log");
+      notify.error(error.response?.data?.error || "Failed to delete log");
     } finally {
       setLogToDelete(null);
       setDeleteModalOpen(false);
@@ -244,16 +243,6 @@ export default function Logs() {
               <h1 className="font-heading text-2xl font-bold tracking-tight text-main md:text-3xl">
                 Session Logs
               </h1>
-              {/* <span
-                className={`flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${
-                  isOwnerOrAdmin
-                    ? "border-primary-cyan/40 bg-primary-cyan/10 text-primary-cyan"
-                    : "border-border-divider bg-card-panel text-sub"
-                }`}
-              >
-                {isOwnerOrAdmin ? <Shield size={12} weight="fill" /> : <Eye size={12} />}
-                {isOwnerOrAdmin ? "Owner View" : "Staff View"}
-              </span> */}
             </div>
             <p className="mt-1 text-xs text-sub sm:text-sm">
               Track and search daily gaming sessions
@@ -265,7 +254,6 @@ export default function Logs() {
         </div>
       </div>
 
-      {/* Redesigned Unified Filter Toolbar Component with Admin Calendar Support */}
       <LogFilterBar
         isOwnerOrAdmin={isOwnerOrAdmin}
         dateRange={dateRange}
@@ -518,7 +506,6 @@ export default function Logs() {
         </>
       )}
 
-      {/* Staff Profile Showcase Modal */}
       <StaffProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => {
@@ -528,7 +515,6 @@ export default function Logs() {
         staff={selectedStaff}
       />
 
-      {/* Edit Log Modal */}
       <EditLogModal
         isOpen={isEditModalOpen}
         onClose={() => {
@@ -539,7 +525,6 @@ export default function Logs() {
         onUpdateComplete={handleUpdateComplete}
       />
 
-      {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={deleteModalOpen}
         onClose={() => {

@@ -13,10 +13,10 @@ import {
   Copy,
   DownloadSimple,
 } from "@phosphor-icons/react";
-import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { logService } from "../services/logService";
 import { formatINR } from "../utils/format";
+import { notify } from "../utils/toastController";
 import Loader from "../components/ui/Loader";
 
 const FOCUS =
@@ -87,16 +87,6 @@ function StatCard({ icon: Icon, label, value, sub }) {
   );
 }
 
-/**
- * Owner-only "Wrapped"-style daily summary. Staff reach this via a link they
- * share (see RevenueSummary); this page re-checks the role itself rather
- * than trusting the caller, since the link may be opened by anyone signed in.
- *
- * TODO: if owners should open shared links without logging into the app,
- * swap this auth check for a signed, time-limited token the backend issues
- * when staff shares — right now it only works for an already-authenticated
- * owner account.
- */
 export default function RevenueReveal() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -122,7 +112,7 @@ export default function RevenueReveal() {
         const all = Array.isArray(data) ? data : data.logs || [];
         setLogs(all.filter((l) => sameDay(l.createdAt || l.timestamp, targetDate)));
       })
-      .catch(() => toast.error("Failed to load revenue data"))
+      .catch(() => notify.error("Failed to load revenue data"))
       .finally(() => setLoading(false));
   }, [isAdmin, targetDate]);
 
@@ -165,12 +155,12 @@ export default function RevenueReveal() {
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast.success("Link copied");
+    notify.success("Link copied");
   };
 
   const handleExportCSV = () => {
     if (!logs.length) {
-      toast.error("No sessions to export");
+      notify.error("No sessions to export");
       return;
     }
     const headers = ["Player", "Station", "Duration (mins)", "Payment", "Cost (INR)"];

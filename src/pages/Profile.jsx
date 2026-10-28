@@ -11,17 +11,14 @@ import {
   ArrowsDownUp,
   Key,
   User,
+  At,
   CheckCircle,
-  Clock,
-  Timer,
-  SignIn,
-  CalendarCheck,
-  Pulse,
+  LockKey,
 } from "@phosphor-icons/react";
 import { useAuth } from "../context/AuthContext";
 import { userService } from "../services/userService";
 import Sheet, { INPUT_CLASS, PRIMARY_BTN } from "../components/ui/Sheet";
-import { toast } from "react-hot-toast";
+import { notify } from "../utils/toastController";
 
 const GRID_TEXTURE = {
   backgroundImage:
@@ -36,10 +33,6 @@ const FOCUS =
 
 const initialsOf = (name) => (name?.trim()?.[0] || "U").toUpperCase();
 
-/**
- * Client-Side Lossless WebP Canvas Image Compressor
- * Converts large avatar photos to lightweight WebP blobs (<200KB)
- */
 const compressAvatarImage = (file, maxDimension = 800, quality = 0.88) => {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
@@ -132,67 +125,6 @@ function Avatar({ src, name, size = "32px", onError }) {
   );
 }
 
-/**
- * iPhone Battery / Apple Watch Activity Ring Progression Component
- */
-function CircularProgressRing({ percentage = 81, size = 104, strokeWidth = 9 }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <div className="relative flex shrink-0 items-center justify-center select-none" style={{ width: size, height: size }}>
-      <svg className="size-full -rotate-90 transform" viewBox={`0 0 ${size} ${size}`}>
-        {/* Track circle */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="text-border-divider/90"
-          fill="transparent"
-        />
-        {/* Glow backdrop ring */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="currentColor"
-          strokeWidth={strokeWidth + 2}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          className="text-primary-cyan/25 blur-[3px] transition-all duration-1000 ease-out"
-          fill="transparent"
-        />
-        {/* Active progress ring */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          className="text-primary-cyan transition-all duration-1000 ease-out"
-          fill="transparent"
-        />
-      </svg>
-      {/* Center Percentage Display */}
-      <div className="absolute flex flex-col items-center justify-center text-center">
-        <span className="font-mono text-xl font-black text-main leading-none">
-          {percentage}%
-        </span>
-        <span className="mt-1 font-mono text-[9px] font-bold uppercase tracking-widest text-sub">
-          Shift
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function DetailRow({ icon: Icon, label, value, isMono = false, badge }) {
   return (
     <div className="flex flex-col gap-1.5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -212,11 +144,13 @@ function DetailRow({ icon: Icon, label, value, isMono = false, badge }) {
 
 function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
   const nameId = useId();
+  const usernameId = useId();
   const phoneId = useId();
   const fileInputRef = useRef(null);
   const objectUrlRef = useRef(null);
 
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [preview, setPreview] = useState(null);
   const [file, setFile] = useState(null);
@@ -228,6 +162,7 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
   useEffect(() => {
     if (!isOpen) return;
     setName(user?.name || "");
+    setUsername(user?.username || "");
     setPhone(user?.phone || "");
     setPreview(avatarUrl || user?.photoUrl || null);
     setFile(null);
@@ -256,9 +191,9 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
       setFile(result.compressedFile);
       setPreview(url);
       setCompressionStats(result);
-      toast.success(`Photo compressed (${result.savingsPct}% space saved)`);
+      notify.success(`Photo compressed (${result.savingsPct}% space saved)`);
     } catch (err) {
-      toast.error(err.message || "Failed to compress image");
+      notify.error(err.message || "Failed to compress image");
     } finally {
       setCompressing(false);
     }
@@ -272,6 +207,7 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
     try {
       const formData = new FormData();
       formData.append("name", name.trim());
+      formData.append("username", username.toLowerCase().replace(/\s+/g, ''));
       formData.append("phone", phone.trim());
       if (file) {
         formData.append("avatar", file);
@@ -280,7 +216,7 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
       await onSave(formData);
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || "Failed to update profile");
+      notify.error(err.response?.data?.message || err.message || "Failed to update profile");
     } finally {
       setSubmitting(false);
     }
@@ -291,7 +227,7 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
       isOpen={isOpen}
       onClose={onClose}
       title="Edit Profile"
-      description="Update your display identity and avatar image."
+      description="Update your account display identity, username handle, and avatar."
       footer={
         <button
           type="submit"
@@ -303,7 +239,7 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
         </button>
       }
     >
-      <form id="edit-profile-form" onSubmit={handleSubmit} className="space-y-5">
+      <form id="edit-profile-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="flex items-center gap-4 rounded-xl border border-border-divider/80 bg-card-panel/60 p-3.5">
           <div className="relative shrink-0">
             <div className="size-16 rounded-full border border-border-divider bg-app-bg p-0.5 shadow-sm">
@@ -329,7 +265,7 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
               {preview ? "Change Photo" : "Upload Photo"}
             </button>
             <p className="text-[11px] text-sub">
-              Automatically compressed to WebP format before upload.
+              Compressed automatically to WebP format before upload.
             </p>
 
             {compressionStats && (
@@ -353,7 +289,7 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
 
         <div>
           <label htmlFor={nameId} className="mb-1 block font-mono text-xs font-medium uppercase tracking-wider text-sub">
-            Full Name
+            Full Display Name
           </label>
           <input
             id={nameId}
@@ -367,8 +303,27 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
         </div>
 
         <div>
+          <label htmlFor={usernameId} className="mb-1 block font-mono text-xs font-medium uppercase tracking-wider text-sub">
+            Username Handle (@)
+          </label>
+          <div className="relative flex items-center">
+            <span className="absolute left-3 font-mono text-xs text-sub">@</span>
+            <input
+              id={usernameId}
+              type="text"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+              placeholder="joyal"
+              className={`${INPUT_CLASS} pl-8 font-mono`}
+            />
+          </div>
+          <p className="mt-1 font-mono text-[10px] text-sub">Lower-case only, no spaces.</p>
+        </div>
+
+        <div>
           <label htmlFor={phoneId} className="mb-1 block font-mono text-xs font-medium uppercase tracking-wider text-sub">
-            Phone Number
+            Phone Contact
           </label>
           <input
             id={phoneId}
@@ -382,7 +337,7 @@ function EditProfileSheet({ isOpen, onClose, user, avatarUrl, onSave }) {
 
         <div className="flex items-center gap-2 rounded-lg border border-border-divider/60 bg-app-bg/50 p-3 text-xs text-sub">
           <Key size={15} className="shrink-0 text-primary-cyan" />
-          <span>Email and system roles are managed by administrators.</span>
+          <span>Email address and system access roles are managed by admins.</span>
         </div>
       </form>
     </Sheet>
@@ -397,16 +352,6 @@ export default function Profile() {
   const [bgBroken, setBgBroken] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
-  // Dummy Staff Analytics Data
-  const dummyAnalytics = {
-    checkInTime: "02:30 PM",
-    loggedHours: "6.5 hrs",
-    targetHours: "8.0 hrs",
-    completionPct: 81,
-    weeklyTotal: "34.5 / 40 hrs",
-    shiftStatus: "Active Shift",
-  };
-
   useEffect(() => {
     setAvatarUrl(user?.photoUrl || null);
     setBgBroken(false);
@@ -419,7 +364,7 @@ export default function Profile() {
     if (setUser) {
       setUser((prev) => ({ ...prev, ...updatedUser }));
     }
-    toast.success("Profile updated successfully");
+    notify.success("Profile updated successfully");
   };
 
   const hasPhoto = Boolean(avatarUrl && !bgBroken);
@@ -427,7 +372,7 @@ export default function Profile() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-20 font-body text-main">
-      {/* Hero Header with Blurred Background Glow & Grid Overlay */}
+      {/* Header Banner Section */}
       <motion.section
         initial={reduceMotion ? false : { opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -454,7 +399,6 @@ export default function Profile() {
         </div>
 
         <div className="relative flex flex-col items-center gap-5 px-6 pb-7 pt-10 text-center sm:flex-row sm:items-end sm:gap-6 sm:px-8 sm:pb-8 sm:pt-12 sm:text-left">
-          {/* Avatar frame */}
           <div className="relative shrink-0">
             <div className="size-28 rounded-full border-4 border-card-panel bg-app-bg shadow-2xl shadow-black/60 sm:size-32">
               <Avatar src={avatarUrl} name={user?.name} size="36px" />
@@ -476,7 +420,7 @@ export default function Profile() {
 
             <div className="flex flex-wrap items-center justify-center gap-2 pt-1 sm:justify-start">
               <span
-                className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${
+                className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider ${
                   isAdmin
                     ? "border-primary-cyan/40 bg-primary-cyan/10 text-primary-cyan"
                     : "border-border-divider bg-app-bg/80 text-sub"
@@ -485,9 +429,11 @@ export default function Profile() {
                 <ShieldCheck size={13} weight="fill" /> {userRole}
               </span>
 
-              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                <CheckCircle size={13} weight="fill" /> Active Operator
-              </span>
+              {user?.username && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-primary-cyan/30 bg-primary-cyan/10 px-2.5 py-0.5 font-mono text-[11px] font-bold tracking-wider text-primary-cyan">
+                  <At size={13} weight="bold" /> {user.username}
+                </span>
+              )}
             </div>
           </div>
 
@@ -502,83 +448,7 @@ export default function Profile() {
         </div>
       </motion.section>
 
-      
-      {/* <section className="overflow-hidden rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-sm">
-        <div className="flex items-center justify-between border-b border-border-divider/60 pb-3.5">
-          <div className="flex items-center gap-2">
-            <Pulse size={18} className="text-primary-cyan" weight="bold" />
-            <h2 className="font-mono text-xs font-bold uppercase tracking-wider text-main">
-              Staff Shift Analytics
-            </h2>
-          </div>
-          <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-400">
-            <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            {dummyAnalytics.shiftStatus}
-          </span>
-        </div>
-
-        <div className="mt-5 flex flex-col items-center gap-6 md:flex-row md:items-center md:justify-between md:gap-8">
-          
-          <div className="flex items-center gap-5 rounded-xl border border-border-divider/60 bg-app-bg/50 p-4 w-full md:w-auto">
-            <CircularProgressRing percentage={dummyAnalytics.completionPct} size={100} strokeWidth={9} />
-            <div className="space-y-1">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sub">
-                Daily Shift Target
-              </span>
-              <p className="font-mono text-lg font-extrabold text-main">
-                {dummyAnalytics.loggedHours} <span className="text-xs text-sub font-normal">/ {dummyAnalytics.targetHours}</span>
-              </p>
-              <p className="text-xs text-sub font-mono">
-                {100 - dummyAnalytics.completionPct}% remaining for today
-              </p>
-            </div>
-          </div>
-
-          
-          <div className="grid grid-cols-2 gap-3 w-full md:flex-1">
-            <div className="space-y-1 rounded-xl border border-border-divider/60 bg-app-bg/40 p-3.5">
-              <div className="flex items-center gap-1.5 text-xs text-sub font-mono">
-                <SignIn size={14} className="text-primary-cyan" />
-                <span>Time Entered</span>
-              </div>
-              <p className="font-mono text-base font-bold text-main tabular-nums">
-                {dummyAnalytics.checkInTime}
-              </p>
-              <p className="text-[10px] text-sub">Shift Clock-In</p>
-            </div>
-
-            <div className="space-y-1 rounded-xl border border-border-divider/60 bg-app-bg/40 p-3.5">
-              <div className="flex items-center gap-1.5 text-xs text-sub font-mono">
-                <Timer size={14} className="text-primary-cyan" />
-                <span>Active Hours</span>
-              </div>
-              <p className="font-mono text-base font-bold text-emerald-400 tabular-nums">
-                {dummyAnalytics.loggedHours}
-              </p>
-              <p className="text-[10px] text-sub">Tracked Session Time</p>
-            </div>
-
-            <div className="col-span-2 space-y-1 rounded-xl border border-border-divider/60 bg-app-bg/40 p-3.5">
-              <div className="flex items-center gap-1.5 text-xs text-sub font-mono">
-                <CalendarCheck size={14} className="text-primary-cyan" />
-                <span>Weekly Target Progress</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="font-mono text-sm font-bold text-main">
-                  {dummyAnalytics.weeklyTotal}
-                </p>
-                <span className="font-mono text-[10px] font-bold text-primary-cyan">
-                  86%
-                </span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-border-divider">
-                <div className="h-full rounded-full bg-primary-cyan" style={{ width: "86%" }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section> */}
-
+      {/* Specifications Grid */}
       <section className="overflow-hidden rounded-2xl border border-border-divider/80 bg-card-panel shadow-xs">
         <header className="border-b border-border-divider/80 px-6 py-3.5 flex items-center justify-between bg-app-bg/40">
           <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-sub">
@@ -592,6 +462,12 @@ export default function Profile() {
             icon={IdentificationBadge}
             label="Operator ID"
             value={user?.userId || "GRID-STAFF"}
+            isMono
+          />
+          <DetailRow
+            icon={At}
+            label="Username Handle"
+            value={user?.username ? `@${user.username}` : undefined}
             isMono
           />
           <DetailRow
@@ -616,7 +492,37 @@ export default function Profile() {
               </span>
             }
           />
+          <DetailRow
+            icon={CheckCircle}
+            label="Account Status"
+            value={user?.isActive ? "Active Operator" : "Inactive"}
+            badge={
+              <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-400">
+                Online
+              </span>
+            }
+          />
         </dl>
+      </section>
+
+      {/* Security Info Card */}
+      <section className="rounded-2xl border border-border-divider/80 bg-card-panel p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-main font-bold text-sm">
+            <LockKey size={18} className="text-primary-cyan" />
+            <span>Security & Authentication</span>
+          </div>
+          <p className="text-xs text-sub">
+            Your login credentials are protected using salted bcrypt encryption.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => notify.info("Contact an administrator to issue a password reset request.")}
+          className={`h-9 px-4 rounded-xl border border-border-divider bg-app-bg text-xs font-mono font-bold text-sub hover:text-main hover:border-primary-cyan/40 cursor-pointer transition-colors ${FOCUS}`}
+        >
+          Reset Password
+        </button>
       </section>
 
       <EditProfileSheet

@@ -1,7 +1,7 @@
 // src/components/logs/EditLogModal.jsx
 import React, { useState, useEffect, useId } from "react";
-import { toast } from "react-hot-toast";
 import { logService } from "../../services/logService";
+import { notify } from "../../utils/toastController";
 import Sheet, { INPUT_CLASS, PRIMARY_BTN } from "../ui/Sheet";
 import { CaretDown } from "@phosphor-icons/react";
 
@@ -59,10 +59,10 @@ export default function EditLogModal({ isOpen, onClose, logData, onUpdateComplet
 
     try {
       await logService.updateLog(logId, formData);
-      toast.success("Log updated successfully");
+      notify.success("Log updated successfully");
       onUpdateComplete();
     } catch (error) {
-      toast.error(error.response?.data?.error || "Failed to update log");
+      notify.error(error.response?.data?.error || "Failed to update log");
     } finally {
       setIsSubmitting(false);
     }

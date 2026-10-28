@@ -14,8 +14,8 @@ import {
   GameControllerIcon,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
+import { notify } from "../../utils/toastController";
 import Sheet from "../ui/Sheet";
 import ConfirmModal from "../ui/ConfirmModal";
 import Tooltip from "../ui/Tooltip";
@@ -101,7 +101,7 @@ export default function Sidebar() {
   }, [location.pathname]);
 
   const handleLogout = async () => {
-    toast.error("Signing out…");
+    notify.error("Signing out…");
     await logout();
     navigate("/auth");
   };

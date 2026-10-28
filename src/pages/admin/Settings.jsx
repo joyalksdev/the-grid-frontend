@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Gear, FloppyDisk } from '@phosphor-icons/react';
 import { motion } from 'framer-motion';
-import { toast } from 'react-hot-toast';
 import { pricingService } from '../../services/pricingService';
+import { notify } from '../../utils/toastController';
 import Loader from '../../components/ui/Loader';
 
 export default function Settings() {
@@ -17,7 +17,7 @@ export default function Settings() {
   useEffect(() => {
     pricingService.getPricing()
       .then((data) => setPricing({ modes: data.modes, addons: data.addons }))
-      .catch(() => toast.error('Failed to load settings'))
+      .catch(() => notify.error('Failed to load settings'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -33,9 +33,9 @@ export default function Settings() {
     try {
       setSaving(true);
       await pricingService.updatePricing(pricing);
-      toast.success('System rates updated globally!');
+      notify.success('System rates updated globally!');
     } catch (err) {
-      toast.error('Failed to update settings');
+      notify.error('Failed to update settings');
     } finally {
       setSaving(false);
     }

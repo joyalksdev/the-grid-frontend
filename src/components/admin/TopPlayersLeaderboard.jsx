@@ -12,11 +12,11 @@ export default function TopPlayersLeaderboard({ players }) {
       {players.map((p, index) => (
         <div
           key={p.name}
-          className="flex items-center justify-between rounded-xl border border-border-divider/60 bg-app-bg/40 p-3 transition-colors hover:bg-app-bg/80"
+          className="flex items-center justify-between rounded-2xl border border-border-divider/60 bg-app-bg/40 p-3 transition-all hover:border-border-divider hover:bg-app-bg/80"
         >
           <div className="flex items-center gap-3">
             <span
-              className={`grid size-7 place-items-center rounded-lg font-mono text-xs font-bold ${
+              className={`grid size-7 place-items-center rounded-lg font-mono text-xs font-bold shadow-sm ${
                 index === 0
                   ? "border border-amber-400/30 bg-amber-400/20 text-amber-400"
                   : index === 1

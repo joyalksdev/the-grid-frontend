@@ -6,15 +6,35 @@ export default function Dropdown({ trigger, items, align = "right" }) {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef(null);
   const dropdownRef = useRef(null);
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0, ready: false });
 
   const updatePosition = () => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
+
+      const dropdownWidth = 224; // w-56 width equivalent
+      const padding = 12;
+
+      let left = align === "right" ? rect.right - dropdownWidth : rect.left;
+
+      if (left + dropdownWidth > window.innerWidth - padding) {
+        left = window.innerWidth - dropdownWidth - padding;
+      }
+      if (left < padding) {
+        left = padding;
+      }
+
+      const estimatedHeight = items.length * 40 + 20;
+      let top = rect.bottom + 8;
+      if (top + estimatedHeight > window.innerHeight - padding) {
+        top = rect.top - estimatedHeight - 8;
+      }
+
       setCoords({
-        top: rect.bottom + window.scrollY,
-        left: align === "right" ? rect.right + window.scrollX : rect.left + window.scrollX,
-        bottom: rect.top + window.scrollY,
+        top,
+        left,
+        ready: true,
       });
     }
   };
@@ -54,7 +74,7 @@ export default function Dropdown({ trigger, items, align = "right" }) {
           e.stopPropagation();
           setIsOpen((prev) => !prev);
         }}
-        className="inline-block cursor-pointer"
+        className="inline-block cursor-pointer select-none"
       >
         {trigger}
       </div>
@@ -65,16 +85,16 @@ export default function Dropdown({ trigger, items, align = "right" }) {
             ref={dropdownRef}
             style={{
               position: "fixed",
-              top: `${coords.top - window.scrollY + 6}px`,
-              ...(align === "right"
-                ? { right: `${window.innerWidth - (coords.left - window.scrollX)}px` }
-                : { left: `${coords.left - window.scrollX}px` }),
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              visibility: coords.ready ? "visible" : "hidden",
             }}
-            className="z-[9999] w-52 rounded-xl bg-card-panel border border-border-divider shadow-2xl py-1.5 focus:outline-none backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            // Removed 'animate-in' entirely to eliminate hidden translation/scale shifts
+            className="z-[9999] w-56 rounded-2xl bg-card-panel/95 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.7)] py-2 focus:outline-none backdrop-blur-2xl"
           >
             {items.map((item, index) => {
               if (item.type === "divider") {
-                return <div key={index} className="h-[1px] bg-border-divider my-1" />;
+                return <div key={index} className="h-[1px] bg-white/10 my-1.5 mx-3" />;
               }
 
               return (
@@ -86,14 +106,20 @@ export default function Dropdown({ trigger, items, align = "right" }) {
                     item.onClick?.();
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left flex items-center gap-2.5 px-3.5 py-2 font-mono text-xs uppercase tracking-wider transition-colors ${
+                  className={`group w-full text-left flex items-center justify-between px-4 py-2.5 font-medium text-xs tracking-wide transition-all duration-150 active:scale-[0.98] ${
                     item.danger
-                      ? "text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
-                      : "text-sub hover:text-main hover:bg-app-bg"
+                      ? "text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
+                      : "text-main/90 hover:text-main hover:bg-white/10"
                   }`}
                 >
-                  {item.icon && <span className="text-sm shrink-0">{item.icon}</span>}
-                  {item.label}
+                  <div className="flex items-center gap-3 truncate">
+                    {item.icon && (
+                      <span className="text-base shrink-0 text-sub transition-colors group-hover:text-primary-cyan">
+                        {item.icon}
+                      </span>
+                    )}
+                    <span className="truncate">{item.label}</span>
+                  </div>
                 </button>
               );
             })}

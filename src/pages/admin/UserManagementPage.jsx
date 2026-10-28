@@ -16,8 +16,8 @@ import {
   CaretDown,
   Check,
 } from "@phosphor-icons/react";
-import { toast } from "react-hot-toast";
 import { userService } from "../../services/userService";
+import { notify } from "../../utils/toastController";
 import Sheet, { INPUT_CLASS, PRIMARY_BTN, FOCUS } from "../../components/ui/Sheet";
 import Dropdown from "../../components/ui/Dropdown";
 import ConfirmModal from "../../components/ui/ConfirmModal";
@@ -68,8 +68,6 @@ function RoleBadge({ role }) {
   );
 }
 
-// iOS-weight spring toggle — same on/off positions as the rest of the app,
-// just physically animated instead of a CSS transition.
 function StatusToggle({ checked, onChange, label }) {
   return (
     <Tooltip content={checked ? "Tap to deactivate" : "Tap to activate"} position="top">
@@ -123,7 +121,6 @@ function UserFormSheet({ isOpen, onClose, editingUser, onSaved }) {
 
   const set = (key) => (e) => setFormData((f) => ({ ...f, [key]: e.target.value }));
 
-  // Same request shape as before: password is stripped on edit when left blank.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -134,14 +131,14 @@ function UserFormSheet({ isOpen, onClose, editingUser, onSaved }) {
 
       if (editingUser) {
         await userService.updateUser(editingUser._id, payload);
-        toast.success(`Updated ${payload.name} successfully`);
+        notify.success(`Updated ${payload.name} successfully`);
       } else {
         await userService.createUser(payload);
-        toast.success(`Created staff account for ${payload.name}`);
+        notify.success(`Created staff account for ${payload.name}`);
       }
       onSaved();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save account details");
+      notify.error(err.response?.data?.message || "Failed to save account details");
     } finally {
       setSubmitting(false);
     }
@@ -266,15 +263,13 @@ export default function UserManagementPage() {
   const [editingUser, setEditingUser] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  // --- Data + handlers: unchanged logic from the original page ---
-
   const fetchUsers = async () => {
     try {
       setLoading(true);
       const data = await userService.getUsers();
       setUsers(data);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to load user accounts");
+      notify.error(err.response?.data?.message || "Failed to load user accounts");
     } finally {
       setLoading(false);
     }
@@ -301,10 +296,10 @@ export default function UserManagementPage() {
   const handleToggleStatus = async (user) => {
     try {
       await userService.toggleUserStatus(user._id);
-      toast.success(`Status updated for ${user.name}`);
+      notify.success(`Status updated for ${user.name}`);
       fetchUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to toggle status");
+      notify.error(err.response?.data?.message || "Failed to toggle status");
     }
   };
 
@@ -312,16 +307,15 @@ export default function UserManagementPage() {
     if (!deleteTarget) return;
     try {
       await userService.deleteUser(deleteTarget._id);
-      toast.success(`Account for ${deleteTarget.name} removed`);
+      notify.success(`Account for ${deleteTarget.name} removed`);
       fetchUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete user");
+      notify.error(err.response?.data?.message || "Failed to delete user");
     } finally {
       setDeleteTarget(null);
     }
   };
 
-  // Same match fields as before (name/username/email); role is an additional filter.
   const filteredUsers = users.filter((u) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
@@ -383,7 +377,7 @@ export default function UserManagementPage() {
         </button>
       </motion.div>
 
-      {/* Search + role filter, one convenient row */}
+      {/* Search + role filter */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}

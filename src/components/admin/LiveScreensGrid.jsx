@@ -1,7 +1,7 @@
 // src/components/admin/LiveScreensGrid.jsx
 import React from "react";
 import { motion } from "framer-motion";
-import { Monitor, User, Clock, CurrencyInr } from "@phosphor-icons/react";
+import { Monitor, User, Clock } from "@phosphor-icons/react";
 import { formatINR } from "../../utils/format";
 
 export default function LiveScreensGrid({ screens }) {
@@ -17,7 +17,7 @@ export default function LiveScreensGrid({ screens }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between border-b border-border-divider/60 pb-2">
         <h2 className="font-heading text-base font-bold text-main">Live Screen Status</h2>
-        <span className="font-mono text-xs text-sub">
+        <span className="rounded-lg border border-border-divider bg-app-bg px-2.5 py-0.5 font-mono text-xs font-bold text-sub">
           {screens.filter((s) => s.status === "occupied").length} / {screens.length} Occupied
         </span>
       </div>
@@ -33,8 +33,8 @@ export default function LiveScreensGrid({ screens }) {
               whileHover={{ y: -2 }}
               className={`relative flex flex-col justify-between rounded-2xl border p-3.5 backdrop-blur-md transition-all ${
                 isOccupied
-                  ? "border-occupied/40 bg-occupied/10 shadow-lg shadow-occupied/5"
-                  : "border-border-divider/80 bg-card-panel/80"
+                  ? "border-occupied/40 bg-occupied/10 shadow-lg shadow-occupied/5 hover:border-occupied/60"
+                  : "border-border-divider/80 bg-card-panel/80 hover:border-border-divider"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -66,7 +66,7 @@ export default function LiveScreensGrid({ screens }) {
                     <div className="flex items-center justify-between font-mono text-[11px] text-sub">
                       <span className="flex items-center gap-1">
                         <Clock size={12} className="text-sub" />
-                        {session.duration} min
+                        {session.duration}m
                       </span>
                       <span className="font-bold text-emerald-400">
                         {formatINR(session.estimatedCost || 0)}
@@ -74,7 +74,7 @@ export default function LiveScreensGrid({ screens }) {
                     </div>
                   </>
                 ) : (
-                  <div className="py-2 text-center font-mono text-[11px] text-sub/60">
+                  <div className="py-2.5 text-center font-mono text-[11px] text-sub/60">
                     Console Ready
                   </div>
                 )}

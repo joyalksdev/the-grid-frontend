@@ -1,18 +1,17 @@
 // src/pages/Tasks.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  CheckSquare,
-  CheckCircle,
   ArrowsClockwise,
   User,
   Calendar,
   Clock,
+  CheckCircle,
   WarningCircle
 } from "@phosphor-icons/react";
-import { toast } from "react-hot-toast";
 
 import { taskService } from "../services/taskService";
 import { socket } from "../services/socket";
+import { notify } from "../utils/toastController";
 import Loader from "../components/ui/Loader";
 
 const TYPE_CONFIG = {
@@ -26,7 +25,7 @@ const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:rin
 export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all"); // "all" | "daily" | "regular" | "scheduled"
+  const [filter, setFilter] = useState("all");
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -34,7 +33,7 @@ export default function Tasks() {
       const data = await taskService.getTasks();
       setTasks(Array.isArray(data) ? data : []);
     } catch (error) {
-      toast.error("Failed to load tasks");
+      notify.error("Failed to load tasks");
     } finally {
       setLoading(false);
     }
@@ -78,9 +77,9 @@ export default function Tasks() {
     const newStatus = task.status === "completed" ? "pending" : "completed";
     try {
       await taskService.updateTaskStatus(task._id, newStatus);
-      toast.success(newStatus === "completed" ? "Completed ✓" : "Reopened");
+      notify.success(newStatus === "completed" ? "Completed ✓" : "Reopened");
     } catch (error) {
-      toast.error("Failed to update task status");
+      notify.error("Failed to update task status");
     }
   };
 
@@ -95,7 +94,6 @@ export default function Tasks() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-28 font-body text-main">
-      {/* Clean Apple-Style Header */}
       <div className="flex flex-col gap-4 border-b border-border-divider/60 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="font-heading text-2xl font-bold tracking-tight text-main md:text-3xl">
@@ -106,7 +104,6 @@ export default function Tasks() {
           </p>
         </div>
 
-        {/* Minimalist Progress Card */}
         <div className="flex items-center gap-4 rounded-2xl border border-border-divider bg-card-panel px-5 py-3 shadow-sm">
           <div className="text-right">
             <p className="font-mono text-[10px] uppercase tracking-wider text-sub">Completion Rate</p>
@@ -123,7 +120,6 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* Segmented Filter Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {["all", "daily", "regular", "scheduled"].map((f) => (
           <button
@@ -141,7 +137,6 @@ export default function Tasks() {
         ))}
       </div>
 
-      {/* Task Matrix Feed */}
       {loading ? (
         <Loader variant="skeleton-table" lines={4} text="Loading tasks..." />
       ) : filteredTasks.length === 0 ? (
@@ -172,7 +167,6 @@ export default function Tasks() {
                 }`}
               >
                 <div className="flex items-start gap-4 min-w-0 flex-1">
-                  {/* Tactile Checkbox */}
                   <button
                     type="button"
                     onClick={() => handleToggleStatus(task)}

@@ -1,10 +1,10 @@
 // src/pages/admin/TaskManager.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import { taskService } from "../../services/taskService";
 import { userService } from "../../services/userService";
 import { socket } from "../../services/socket";
+import { notify } from "../../utils/toastController";
 import Loader from "../../components/ui/Loader";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import { Segmented } from "../../components/ui/PriceCalculator";
@@ -34,7 +34,7 @@ export default function TaskManager() {
       setTasks(Array.isArray(taskData) ? taskData : []);
       setStaffMembers(Array.isArray(staffData) ? staffData : []);
     } catch (error) {
-      toast.error("Failed to load tasks");
+      notify.error("Failed to load tasks");
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ export default function TaskManager() {
     };
 
     const handleRollover = () => {
-      toast.success("Midnight daily task reset completed");
+      notify.success("Midnight daily task reset completed");
       fetchData();
     };
 
@@ -97,7 +97,7 @@ export default function TaskManager() {
     try {
       await taskService.updateTaskStatus(task._id, newStatus);
     } catch (error) {
-      toast.error("Failed to update status");
+      notify.error("Failed to update status");
     }
   };
 
@@ -105,10 +105,10 @@ export default function TaskManager() {
     if (!taskToDelete) return;
     try {
       await taskService.deleteTask(taskToDelete._id);
-      toast.success("Task deleted");
+      notify.success("Task deleted");
       setTaskToDelete(null);
     } catch (error) {
-      toast.error("Failed to delete task");
+      notify.error("Failed to delete task");
     }
   };
 
