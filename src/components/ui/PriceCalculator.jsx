@@ -1,18 +1,11 @@
 // src/components/ui/PriceCalculator.jsx
 import { useEffect, useId, useMemo, useState } from "react";
-import {
-  calculateCustomCost,
-  calculateCustomTime,
-  getTiers,
-  MAX_CUSTOM_MINUTES,
-  MAX_CUSTOM_BUDGET,
-} from "../../config/pricing";
+import { usePricing } from "../../context/PricingContext";
 import { formatINR } from "../../utils/format";
 
 const FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan";
 
-/** 75 -> "1 hr 15 min" */
 export function formatMinutes(total) {
   const h = Math.floor(total / 60);
   const m = total % 60;
@@ -27,7 +20,6 @@ const describe = (breakdown) =>
     .map((b) => `${b.count > 1 ? `${b.count} × ` : ""}${formatMinutes(b.minutes)}`)
     .join(" + ");
 
-/** Small segmented control (also used on the Pricing page) */
 export function Segmented({ label, value, onChange, options }) {
   return (
     <div
@@ -55,16 +47,9 @@ export function Segmented({ label, value, onChange, options }) {
   );
 }
 
-/**
- * Two-way price calculator.
- *  - By Time:  enter minutes  -> cost
- *  - By Price: enter rupees   -> time you get
- *
- * `onChange` receives { minutes, cost } when there is a valid result, else null.
- * Pass a stable function (e.g. a useState setter).
- */
 export default function PriceCalculator({ mode, isExtension = false, onChange }) {
   const inputId = useId();
+  const { calculateCustomCost, calculateCustomTime, getTiers, MAX_CUSTOM_MINUTES, MAX_CUSTOM_BUDGET } = usePricing();
   const [by, setBy] = useState("time");
   const [value, setValue] = useState("");
 
@@ -79,10 +64,11 @@ export default function PriceCalculator({ mode, isExtension = false, onChange })
     return isTime
       ? calculateCustomCost(mode, n, isExtension)
       : calculateCustomTime(mode, n, isExtension);
-  }, [hasValue, tooBig, isTime, mode, n, isExtension]);
+  }, [hasValue, tooBig, isTime, mode, n, isExtension, calculateCustomCost, calculateCustomTime]);
 
   const ready = !!result && result.minutes > 0;
-  const cheapest = getTiers(mode, isExtension)[0];
+  const tiers = getTiers(mode, isExtension);
+  const cheapest = tiers[0] || { price: 0, minutes: 15 };
 
   useEffect(() => {
     onChange?.(ready ? { minutes: result.minutes, cost: result.cost } : null);

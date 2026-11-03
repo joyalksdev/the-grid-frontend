@@ -1,6 +1,6 @@
 // src/components/ui/ExtendModal.jsx
 import { useState, useEffect } from "react";
-import { PRICING_MATRIX, calculateSessionCost } from "../../config/pricing";
+import { usePricing } from "../../context/PricingContext";
 import { formatINR } from "../../utils/format";
 import Sheet, { OptionCard, PRIMARY_BTN } from "./Sheet";
 import PriceCalculator from "./PriceCalculator";
@@ -8,14 +8,15 @@ import PriceCalculator from "./PriceCalculator";
 const DEFAULT_EXTENSIONS = { 15: 50, 30: 80, 60: 130 };
 const COLS = { 3: "grid-cols-3", 4: "grid-cols-4" };
 
-const getOptions = (mode) => PRICING_MATRIX[mode]?.extensions || DEFAULT_EXTENSIONS;
-
 export default function ExtendModal({ screen, isOpen, onClose, onConfirm }) {
+  const { matrix, calculateSessionCost } = usePricing();
   const [selectedMinutes, setSelectedMinutes] = useState(30); // minutes, or "custom"
   const [custom, setCustom] = useState(null); // { minutes, cost } from the calculator
 
   const session = screen?.activeSession;
   const mode = session?.mode || "Single";
+
+  const getOptions = (m) => matrix[m]?.extensions || DEFAULT_EXTENSIONS;
   const extensionOptions = getOptions(mode);
   const optionKeys = Object.keys(extensionOptions);
 
@@ -31,7 +32,7 @@ export default function ExtendModal({ screen, isOpen, onClose, onConfirm }) {
     const keys = Object.keys(getOptions(mode)).map(Number);
     setSelectedMinutes(keys.includes(30) ? 30 : keys[0]);
     setCustom(null);
-  }, [isOpen, mode]);
+  }, [isOpen, mode, matrix]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 // src/components/ui/StartSessionModal.jsx
 import { useState, useEffect, useMemo } from "react";
-import { calculateSessionCost } from "../../config/pricing";
+import { usePricing } from "../../context/PricingContext";
 import { formatINR } from "../../utils/format";
 import Sheet, { OptionCard, INPUT_CLASS, PRIMARY_BTN } from "./Sheet";
 import PriceCalculator from "./PriceCalculator";
@@ -16,6 +16,7 @@ const MODE_OPTIONS = [
 const COLS = { 3: "grid-cols-3", 4: "grid-cols-4" };
 
 export default function StartSessionModal({ screen, isOpen, onClose, onSubmit }) {
+  const { matrix, calculateSessionCost } = usePricing();
   const [player, setPlayer] = useState("");
   const [mode, setMode] = useState("Single");
   const [duration, setDuration] = useState(30); // minutes, or "custom"
@@ -26,26 +27,38 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
     Number(screenIdentifier) === 1 ||
     screen?.type?.toLowerCase().includes("hybrid");
 
+  // Dynamically derive duration keys from the current DB matrix for selected mode
+  const availableDurations = useMemo(() => {
+    const sessionTable = matrix?.[mode]?.sessions || {};
+    const keys = Object.keys(sessionTable).map(Number).sort((a, b) => a - b);
+    return keys.length > 0 ? keys : [15, 30, 60];
+  }, [matrix, mode]);
+
   useEffect(() => {
     if (isOpen && screen) {
       setPlayer("");
       const defaultMode = isSimDriveScreen ? "SimDrive" : "Single";
       setMode(defaultMode);
-      setDuration(30);
+      
+      // Auto-select 30 min if available in matrix, else default to the first duration tier
+      const sessionTable = matrix?.[defaultMode]?.sessions || {};
+      const keys = Object.keys(sessionTable).map(Number).sort((a, b) => a - b);
+      const initialDuration = keys.includes(30) ? 30 : keys[0] || 30;
+
+      setDuration(initialDuration);
       setCustom(null);
     }
-  }, [isOpen, screen, isSimDriveScreen]);
+  }, [isOpen, screen, isSimDriveScreen, matrix]);
 
   const isCustom = duration === "custom";
 
   const calculatedCost = useMemo(
     () => (isCustom ? custom?.cost || 0 : calculateSessionCost(mode, duration, false)),
-    [isCustom, custom, mode, duration]
+    [isCustom, custom, mode, duration, calculateSessionCost]
   );
   const billedMinutes = isCustom ? custom?.minutes || 0 : duration;
 
   const modes = MODE_OPTIONS.filter((o) => !o.simOnly || isSimDriveScreen);
-  const durations = [15, 30, 60];
 
   const getPlayersCount = (selectedMode) => {
     if (selectedMode === "SimDrive" || selectedMode === "Single") return 1;
@@ -57,6 +70,11 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
 
   const handleModeChange = (value) => {
     setMode(value);
+    // Reset to standard duration tier if current choice isn't in new mode
+    const newKeys = Object.keys(matrix?.[value]?.sessions || {}).map(Number);
+    if (!isCustom && !newKeys.includes(Number(duration))) {
+      setDuration(newKeys.includes(30) ? 30 : newKeys[0] || 30);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -153,8 +171,8 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
           <legend className="mb-1.5 text-sm font-medium text-main">
             Session Time
           </legend>
-          <div className={`grid gap-2 ${COLS[durations.length + 1]}`}>
-            {durations.map((mins) => (
+          <div className={`grid gap-2 ${COLS[availableDurations.length + 1] || "grid-cols-4"}`}>
+            {availableDurations.map((mins) => (
               <OptionCard
                 key={`dur-option-${mins}`}
                 name="start-duration"
@@ -163,7 +181,9 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
                 onChange={() => setDuration(mins)}
               >
                 <span className="font-mono text-sm font-bold tabular-nums">
-                  {mins === 60 ? "1\u00A0Hr" : `${mins}\u00A0Mins`}
+                  {mins >= 60 && mins % 60 === 0
+                    ? `${mins / 60}\u00A0Hr`
+                    : `${mins}\u00A0Mins`}
                 </span>
               </OptionCard>
             ))}

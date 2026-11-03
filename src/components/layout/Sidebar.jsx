@@ -12,6 +12,9 @@ import {
   CaretLeft,
   DesktopTowerIcon,
   GameControllerIcon,
+  Money,
+  CurrencyDollar,
+  CurrencyDollarIcon,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
@@ -115,7 +118,7 @@ export default function Sidebar() {
     { label: "Tasks", path: "/tasks", icon: CheckSquare },
     { label: "Logs", path: "/logs", icon: ClockCounterClockwise },
     { label: "Screens", path: "/screens", icon: DesktopTowerIcon },
-    { label: "Rates", path: "/pricing", icon: Calculator },
+    { label: "Pricing", path: "/pricing", icon: CurrencyDollarIcon },
   ];
 
   const secondaryNavItems = [

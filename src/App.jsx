@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { TimerProvider } from "./context/TimerContext";
 import { SocketProvider } from "./context/SocketContext";
+import { PricingProvider } from "./context/PricingContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 import RootLayout from "./components/layout/RootLayout";
@@ -19,11 +20,13 @@ import UserManagementPage from "./pages/admin/UserManagementPage";
 import UserRequestsPage from "./pages/admin/UserRequestsPage";
 import Logs from "./pages/Logs";
 import Loader from "./components/ui/Loader";
-import RevenueReveal from "./pages/RevenueReveal";
-import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminDashboard from './pages/admin/AdminDashboard';
 import Tasks from "./pages/Tasks";
 import Hardware from "./pages/Hardware";
 import TaskManager from "./pages/admin/TaskManager";
+import ResetPassword from "./pages/ResetPassword";
+import DailyReport from "./pages/DailyReport";
+import PricingManagerPage from "./pages/admin/PricingManagerPage";
 
 function FullScreenLoader() {
   return (
@@ -65,8 +68,8 @@ function MainAppRoutes() {
           <Route path="/logs" element={<Logs />} />
           <Route path="/tasks" element={<TaskManager />} />
           <Route path="/hardware" element={<Hardware />} />
-          <Route path="/logs/revenue" element={<RevenueReveal />} />
-          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/logs/revenue" element={<DailyReport />} />
+          <Route path="/pricing" element={<PricingManagerPage />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
@@ -80,13 +83,12 @@ function MainAppRoutes() {
       <Route element={<RootLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="/logs" element={<Logs />} />
-        <Route path="/logs/revenue" element={<RevenueReveal />} />
+        <Route path="/logs/revenue" element={<DailyReport />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/hardware" element={<Hardware />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<Navigate to="/" replace />} />
-
       </Route>
     </Routes>
   );
@@ -100,6 +102,7 @@ export default function App() {
           {/* Public Auth & Onboarding Routes */}
           <Route path="/auth" element={<AuthenticatedAuthRoute />} />
           <Route path="/onboard" element={<OnboardingPage />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Main Routes */}
           <Route element={<ProtectedRoute />}>
@@ -108,7 +111,9 @@ export default function App() {
               element={
                 <SocketProvider>
                   <TimerProvider>
-                    <MainAppRoutes />
+                    <PricingProvider>
+                      <MainAppRoutes />
+                    </PricingProvider>
                   </TimerProvider>
                 </SocketProvider>
               }

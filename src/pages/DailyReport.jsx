@@ -1,5 +1,5 @@
-// src/pages/RevenueReveal.jsx
-import React, { useEffect, useMemo, useState } from "react";
+// src/pages/DailyStatusPage.jsx
+import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -12,6 +12,8 @@ import {
   Trophy,
   Copy,
   DownloadSimple,
+  CheckSquare,
+  ListChecks,
 } from "@phosphor-icons/react";
 import { useAuth } from "../context/AuthContext";
 import { logService } from "../services/logService";
@@ -87,34 +89,48 @@ function StatCard({ icon: Icon, label, value, sub }) {
   );
 }
 
-export default function RevenueReveal() {
+export default function DailyReport() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { isAdmin } = useAuth();
   const reduceMotion = useReducedMotion();
 
   const [logs, setLogs] = useState([]);
+  const [taskAnalytics, setTaskAnalytics] = useState({ total: 0, completed: 0 });
   const [loading, setLoading] = useState(true);
 
-  const targetDate = useMemo(() => {
+  const targetDate = React.useMemo(() => {
     const raw = params.get("date");
     return raw ? new Date(raw) : new Date();
   }, [params]);
+
+  const dateStringKey = targetDate.toISOString().split("T")[0];
 
   useEffect(() => {
     if (!isAdmin) {
       setLoading(false);
       return;
     }
-    logService
-      .getLogs()
-      .then((data) => {
-        const all = Array.isArray(data) ? data : data.logs || [];
-        setLogs(all.filter((l) => sameDay(l.createdAt || l.timestamp, targetDate)));
+
+    Promise.all([
+      logService.getLogs(),
+      logService.getAnalytics({ date: dateStringKey }).catch(() => null)
+    ])
+      .then(([logsData, analyticsData]) => {
+        const allLogs = Array.isArray(logsData) ? logsData : logsData.logs || [];
+        setLogs(allLogs.filter((l) => sameDay(l.createdAt || l.timestamp, targetDate)));
+
+        if (analyticsData) {
+          // Adjust based on your backend structure (e.g. analyticsData.tasks or analyticsData)
+          setTaskAnalytics({
+            total: analyticsData.tasks?.total ?? analyticsData.totalTasks ?? 0,
+            completed: analyticsData.tasks?.completed ?? analyticsData.completedTasks ?? 0,
+          });
+        }
       })
-      .catch(() => notify.error("Failed to load revenue data"))
+      .catch(() => notify.error("Failed to load daily status data"))
       .finally(() => setLoading(false));
-  }, [isAdmin, targetDate]);
+  }, [isAdmin, targetDate, dateStringKey]);
 
   const totalCash = logs
     .filter((l) => String(l.payment).toLowerCase() === "cash")
@@ -169,7 +185,7 @@ export default function RevenueReveal() {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `revenue_${targetDate.toISOString().split("T")[0]}.csv`;
+    link.download = `daily_status_${dateStringKey}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
   };
@@ -212,6 +228,7 @@ export default function RevenueReveal() {
         Back to Logs
       </button>
 
+      {/* Main Revenue Banner */}
       <motion.section
         initial={reduceMotion ? false : { opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -223,7 +240,7 @@ export default function RevenueReveal() {
         <div className="relative">
           <p className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-primary-cyan">
             <Sparkle size={13} weight="fill" aria-hidden="true" />
-            Today&rsquo;s Revenue
+            Daily Report & Revenue
           </p>
           <p className="mt-1 text-sm text-sub">{dateLabel}</p>
 
@@ -236,6 +253,7 @@ export default function RevenueReveal() {
         </div>
       </motion.section>
 
+      {/* Financial Breakdown Grid */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard icon={CurrencyInr} label="Cash" value={formatINR(totalCash)} sub={`${cashPct}% of total`} />
         <StatCard icon={QrCode} label="UPI / GPay" value={formatINR(totalGPay)} sub={`${gpayPct}% of total`} />
@@ -244,6 +262,32 @@ export default function RevenueReveal() {
       <div className="grid grid-cols-2 gap-3">
         <StatCard icon={ChartLineUp} label="Avg / Session" value={formatINR(avgSession)} />
         <StatCard icon={Monitor} label="Busiest Station" value={busiestStation?.key || "—"} />
+      </div>
+
+      {/* NEW: Task Analytics Section */}
+      <div className="rounded-2xl border border-border-divider bg-card-panel p-5 space-y-3">
+        <div className="flex items-center gap-2 text-primary-cyan font-mono text-xs font-bold uppercase tracking-wider">
+          <ListChecks size={16} weight="bold" />
+          <span>Task Analytics ({dateLabel})</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-border-divider/60 bg-app-bg/40 p-3.5">
+            <div className="flex items-center gap-1.5 text-sub text-xs">
+              <ListChecks size={14} />
+              <span>Total Tasks</span>
+            </div>
+            <p className="mt-1 font-mono text-lg font-bold text-main">{taskAnalytics.total}</p>
+          </div>
+          <div className="rounded-xl border border-border-divider/60 bg-app-bg/40 p-3.5">
+            <div className="flex items-center gap-1.5 text-emerald-400 text-xs">
+              <CheckSquare size={14} />
+              <span>Completed</span>
+            </div>
+            <p className="mt-1 font-mono text-lg font-bold text-emerald-400">
+              {taskAnalytics.completed} <span className="text-xs font-normal text-sub">/ {taskAnalytics.total}</span>
+            </p>
+          </div>
+        </div>
       </div>
 
       {topPlayer && topPlayer.count > 1 && (
@@ -260,6 +304,7 @@ export default function RevenueReveal() {
         </div>
       )}
 
+      {/* Actions */}
       <div className="flex gap-2 pt-1">
         <button
           type="button"
