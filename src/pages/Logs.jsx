@@ -1,5 +1,5 @@
 // src/pages/Logs.jsx
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Shield,
   Eye,
@@ -71,12 +71,14 @@ function formatSessionDateTime(log) {
 }
 
 const todayISO = () => new Date().toISOString().split("T")[0];
+const currentMonthValue = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
 
 export default function Logs() {
   const { user } = useAuth();
   const isOwnerOrAdmin = ["admin", "owner"].includes(user?.role);
 
   const [allLogs, setAllLogs] = useState([]);
+  const [unfilteredLogs, setUnfilteredLogs] = useState([]);
   const [displayedLogs, setDisplayedLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -87,22 +89,56 @@ export default function Logs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState("today");
   const [specificDate, setSpecificDate] = useState(todayISO());
-  const [dateMode, setDateMode] = useState("range"); // "range" or "exact" for admin
+  const [startDate, setStartDate] = useState(todayISO());
+  const [endDate, setEndDate] = useState(todayISO());
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthValue());
+  const [dateMode, setDateMode] = useState("range"); // "range", "custom_range", "month", or "exact"
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [screenFilter, setScreenFilter] = useState("all");
 
   const [editingLog, setEditingLog] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // Profile Modal Showcase State
+  // Profile Modal State
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  // Delete Confirmation Modal State
+  // Delete Confirmation State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [logToDelete, setLogToDelete] = useState(null);
 
   const observerTarget = useRef(null);
+
+  useEffect(() => {
+    if (!isOwnerOrAdmin) return;
+    logService.getLogs({ dateRange: "all" })
+      .then((data) => {
+        setUnfilteredLogs(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {});
+  }, [isOwnerOrAdmin]);
+
+  const availableMonths = useMemo(() => {
+    const list = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      
+      const hasLogs = unfilteredLogs.some((l) => {
+        const t = l.createdAt || l.timestamp || l.startTime;
+        if (!t) return false;
+        const logDate = new Date(t);
+        if (isNaN(logDate.getTime())) return false;
+        const logVal = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, "0")}`;
+        return logVal === val;
+      });
+
+      list.push({ value: val, label, disabled: !hasLogs && val !== currentMonthValue() });
+    }
+    return list;
+  }, [unfilteredLogs]);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -113,6 +149,8 @@ export default function Logs() {
       if (isOwnerOrAdmin) {
         if (dateMode === "range") {
           params.dateRange = dateRange;
+        } else if (dateMode === "custom_range" || dateMode === "month") {
+          params.dateRange = "all"; // Request full set to filter between start-end or month client-side securely
         } else {
           params.date = specificDate;
         }
@@ -124,7 +162,33 @@ export default function Logs() {
       if (screenFilter !== "all") params.screen = screenFilter;
 
       const data = await logService.getLogs(params);
-      const safeLogs = Array.isArray(data) ? data : [];
+      let safeLogs = Array.isArray(data) ? data : [];
+
+      // Client-side Custom Range Filtering (From Date to Date)
+      if (isOwnerOrAdmin && dateMode === "custom_range" && startDate && endDate) {
+        const startTimestamp = new Date(startDate).setHours(0, 0, 0, 0);
+        const endTimestamp = new Date(endDate).setHours(23, 59, 59, 999);
+
+        safeLogs = safeLogs.filter((l) => {
+          const t = l.createdAt || l.timestamp || l.startTime;
+          if (!t) return false;
+          const logTime = new Date(t).getTime();
+          return !isNaN(logTime) && logTime >= startTimestamp && logTime <= endTimestamp;
+        });
+      }
+
+      // Client-side Month Filtering
+      if (isOwnerOrAdmin && dateMode === "month" && selectedMonth) {
+        safeLogs = safeLogs.filter((l) => {
+          const t = l.createdAt || l.timestamp || l.startTime;
+          if (!t) return false;
+          const d = new Date(t);
+          if (isNaN(d.getTime())) return false;
+          const logMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          return logMonthStr === selectedMonth;
+        });
+      }
+
       setAllLogs(safeLogs);
       setPage(1);
       setDisplayedLogs(safeLogs.slice(0, PAGE_SIZE));
@@ -134,7 +198,7 @@ export default function Logs() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, dateRange, specificDate, dateMode, paymentFilter, screenFilter, isOwnerOrAdmin]);
+  }, [searchTerm, dateRange, specificDate, startDate, endDate, selectedMonth, dateMode, paymentFilter, screenFilter, isOwnerOrAdmin]);
 
   useEffect(() => {
     const timer = setTimeout(fetchLogs, 300);
@@ -260,6 +324,13 @@ export default function Logs() {
         setDateRange={setDateRange}
         specificDate={specificDate}
         setSpecificDate={setSpecificDate}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        selectedMonth={selectedMonth}
+        setSelectedMonth={setSelectedMonth}
+        availableMonths={availableMonths}
         dateMode={dateMode}
         setDateMode={setDateMode}
         searchTerm={searchTerm}
