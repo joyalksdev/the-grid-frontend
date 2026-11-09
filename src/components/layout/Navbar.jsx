@@ -5,6 +5,8 @@ import {
   SquaresFour,
   CheckSquare,
   ClockCounterClockwise,
+  CalendarCheck,
+  GameController,
   Calculator,
   Gear,
   UserCircle,
@@ -153,6 +155,8 @@ export default function Navbar() {
 
   const navItems = [
     { label: "Dashboard", path: "/", icon: SquaresFour },
+    { label: "Booking", path: "/booking", icon: CalendarCheck },
+    { label: "Games", path: "/games", icon: GameController },
     { label: "Tasks", path: "/tasks", icon: CheckSquare },
     { label: "Logs", path: "/logs", icon: ClockCounterClockwise },
     { label: "Rates", path: "/pricing", icon: Calculator },
@@ -291,7 +295,7 @@ export default function Navbar() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border-divider/60 bg-app-bg/90 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-2xl select-none shadow-[0_-8px_30px_rgba(0,0,0,0.4)] lg:hidden"
       >
         <div className="mx-auto flex max-w-md items-center justify-between gap-1">
-          {navItems.slice(0, 4).map((item) => {
+          {navItems.slice(0, 5).map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
 

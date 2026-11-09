@@ -5,15 +5,15 @@ import {
   SquaresFour,
   CheckSquare,
   ClockCounterClockwise,
+  CalendarCheck,
+  GameController,
   Calculator,
   Users,
   UserPlus,
   SignOut,
   CaretLeft,
   DesktopTowerIcon,
-  GameControllerIcon,
-  Money,
-  CurrencyDollar,
+  Cpu,
   CurrencyDollarIcon,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -115,6 +115,8 @@ export default function Sidebar() {
 
   const mainNavItems = [
     { label: "Dashboard", path: "/", icon: SquaresFour },
+    { label: "Booking", path: "/booking", icon: CalendarCheck },
+    { label: "Games", path: "/games", icon: GameController },
     { label: "Tasks", path: "/tasks", icon: CheckSquare },
     { label: "Logs", path: "/logs", icon: ClockCounterClockwise },
     { label: "Screens", path: "/screens", icon: DesktopTowerIcon },
@@ -123,7 +125,7 @@ export default function Sidebar() {
 
   const secondaryNavItems = [
     { label: "User Management", path: "/settings/users", icon: Users },
-    { label: "Hardware & Devices", path: "/hardware", icon: GameControllerIcon },
+    { label: "Hardware & Devices", path: "/hardware", icon: Cpu },
   ];
 
   const isActive = (path) =>
@@ -211,7 +213,7 @@ export default function Sidebar() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border-divider bg-app-bg/90 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md select-none lg:hidden"
       >
         <div className="mx-auto flex max-w-md items-center justify-between gap-1">
-          {mainNavItems.map((item) => {
+          {mainNavItems.slice(0, 5).map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
 

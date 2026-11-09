@@ -1,6 +1,12 @@
+// src/services/screenService.js
 import API from './api';
 
 export const screenService = {
+  getScreens: async () => {
+    const response = await API.get('/screens');
+    return response.data;
+  },
+
   getAllScreens: async () => {
     const response = await API.get('/screens');
     return response.data;
