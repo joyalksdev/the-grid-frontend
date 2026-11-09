@@ -47,12 +47,11 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
     date: todayISO(),
     startTime: "14:00",
     duration: 30,
-    selectedGames: [], // Required array of game strings/titles
-    customGameInput: "", // Manual string input fallback
+    selectedGames: [],
+    customGameInput: "",
     notes: "",
   });
 
-  // Fetch screens, games via service layer, and reset on open
   useEffect(() => {
     if (isOpen) {
       screenService.getScreens()
@@ -105,7 +104,6 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
     return calculateSessionCost(formData.mode, formData.duration, false);
   }, [formData.mode, formData.duration, calculateSessionCost]);
 
-  // Customer search autocomplete
   useEffect(() => {
     const query = formData.customerName.trim() || formData.phoneNumber.trim();
     if (query.length < 2) {
@@ -168,7 +166,15 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
       notify.error("Please select a valid station");
       return;
     }
-    if (!formData.selectedGames || formData.selectedGames.length === 0) {
+
+    // Auto-include any text left in custom game input upon submit
+    let gamesToSubmit = [...formData.selectedGames];
+    const customVal = formData.customGameInput.trim();
+    if (customVal && !gamesToSubmit.includes(customVal)) {
+      gamesToSubmit.push(customVal);
+    }
+
+    if (gamesToSubmit.length === 0) {
       notify.error("Game selection is required. Please choose or type at least one game.");
       return;
     }
@@ -188,7 +194,7 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
         startTime: formData.startTime,
         duration: formData.duration,
         estimatedCost: calculatedCost,
-        selectedGames: formData.selectedGames,
+        selectedGames: gamesToSubmit,
         notes: formData.notes,
       });
       notify.success("Reservation created successfully");
@@ -228,7 +234,7 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
               type="submit"
               form="create-booking-form"
               disabled={isSubmitting || calculatedCost <= 0}
-              className={PRIMARY_BTN}
+              className={`${PRIMARY_BTN} px-2 py-2.5 rounded-xl`}
             >
               {isSubmitting ? "Creating..." : "Confirm Reservation"}
             </button>
@@ -237,7 +243,6 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
       }
     >
       <form id="create-booking-form" onSubmit={handleSubmit} className="space-y-4 relative">
-        {/* Customer Search Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="relative">
             <label htmlFor={nameId} className="mb-1 block text-xs font-medium text-main">
@@ -302,7 +307,6 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
           </div>
         </div>
 
-        {/* Station Selection */}
         <div>
           <label htmlFor={screenId} className="mb-1 block text-xs font-medium text-main">
             Assigned Station / Screen
@@ -324,12 +328,11 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
           </div>
         </div>
 
-        {/* Required Game Selection (from gameService API + Manual String Input Fallback) */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-xs font-medium text-main flex items-center gap-1.5">
               <GameController size={15} className="text-primary-cyan" />
-              Select Games <span className="text-rose-400">* (Required)</span>
+              Select Games <span className="text-rose-400">(Required)</span>
             </label>
             <span className="font-mono text-[10px] text-sub">
               {formData.selectedGames.length} selected
@@ -362,7 +365,6 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
             <p className="text-[11px] text-sub italic mb-2">No pre-configured games fetched. Type game titles manually below.</p>
           )}
 
-          {/* Manual String Input for Custom Game Name */}
           <div className="flex gap-2 mt-2">
             <input
               type="text"
@@ -386,7 +388,6 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
             </button>
           </div>
 
-          {/* Selected Game Badges preview */}
           {formData.selectedGames.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {formData.selectedGames.map((gameName) => (
@@ -408,7 +409,6 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
           )}
         </div>
 
-        {/* Gaming Mode Selection (Pills) */}
         <fieldset>
           <legend className="mb-1 text-xs font-medium text-main">
             Gaming Mode
@@ -429,7 +429,6 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
           </div>
         </fieldset>
 
-        {/* Session Duration Selection */}
         <fieldset>
           <legend className="mb-1 text-xs font-medium text-main">
             Reservation Duration
@@ -457,7 +456,6 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
           </div>
         </fieldset>
 
-        {/* Date & Time */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor={dateId} className="mb-1 block text-xs font-medium text-main">
@@ -488,7 +486,6 @@ export default function CreateBookingModal({ isOpen, onClose, onBookingCreated }
           </div>
         </div>
 
-        {/* Notes */}
         <div>
           <label htmlFor={notesId} className="mb-1 block text-xs font-medium text-main">
             Notes / Special Requests (Optional)
