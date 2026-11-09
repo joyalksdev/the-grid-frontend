@@ -23,8 +23,11 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
   const [custom, setCustom] = useState(null); // { minutes, cost } from the calculator
 
   const screenIdentifier = screen?.screenId || screen?.id || screen?._id;
+  
+  // Updated to correctly target Screen 3 and SimDrive type from database
   const isSimDriveScreen =
-    Number(screenIdentifier) === 1 ||
+    Number(screenIdentifier) === 3 ||
+    screen?.type?.toLowerCase() === "simdrive" ||
     screen?.type?.toLowerCase().includes("hybrid");
 
   // Dynamically derive duration keys from the current DB matrix for selected mode
@@ -79,20 +82,19 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!calculatedCost || calculatedCost <= 0 || !billedMinutes || billedMinutes <= 0) {
-      return;
-    }
+    const finalCost = calculatedCost > 0 ? calculatedCost : 0;
+    const finalMinutes = billedMinutes > 0 ? billedMinutes : 30;
 
     const now = new Date();
-    const endTime = new Date(now.getTime() + billedMinutes * 60 * 1000);
+    const endTime = new Date(now.getTime() + finalMinutes * 60 * 1000);
 
     onSubmit({
       screenId: screenIdentifier,
       player: player.trim() || "Guest",
       mode,
       playersCount: getPlayersCount(mode),
-      duration: billedMinutes,
-      cost: calculatedCost,
+      duration: finalMinutes,
+      cost: finalCost,
       startTime: now.toISOString(),
       endTime: endTime.toISOString(),
     });
@@ -110,7 +112,6 @@ export default function StartSessionModal({ screen, isOpen, onClose, onSubmit })
         <button
           type="submit"
           form="start-session-form"
-          disabled={!calculatedCost || calculatedCost <= 0}
           className={PRIMARY_BTN}
         >
           Start Session
