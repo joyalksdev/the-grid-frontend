@@ -72,3 +72,40 @@ export function playTimerAlertSound() {
 
   return true;
 }
+
+/** Plays a crisp two-note chime for incoming real-time notifications. */
+export function playNotificationSound() {
+  const c = getContext();
+  if (!c) return false;
+
+  if (c.state === "suspended") {
+    c.resume().catch(() => {});
+    return false;
+  }
+
+  const start = c.currentTime + 0.01;
+  const notes = [
+    [659.25, 0],
+    [987.77, 0.12],
+  ];
+
+  notes.forEach(([freq, offset]) => {
+    const t = start + offset;
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, t);
+
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.18, t + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(t);
+    osc.stop(t + 0.18);
+  });
+
+  return true;
+}

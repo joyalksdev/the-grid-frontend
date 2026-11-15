@@ -15,9 +15,11 @@ import {
   DesktopTowerIcon,
   Cpu,
   CurrencyDollarIcon,
+  Bell,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
+import { useNotifications } from "../../context/NotificationContext";
 import { notify } from "../../utils/toastController";
 import Sheet from "../ui/Sheet";
 import ConfirmModal from "../ui/ConfirmModal";
@@ -88,6 +90,7 @@ export default function Sidebar() {
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
   const { user, logout } = useAuth();
+  const { unreadCount, openDrawer } = useNotifications();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -124,6 +127,7 @@ export default function Sidebar() {
   ];
 
   const secondaryNavItems = [
+    { label: "Notifications", path: "/notifications", icon: Bell, badge: unreadCount },
     { label: "User Management", path: "/settings/users", icon: Users },
     { label: "Hardware & Devices", path: "/hardware", icon: Cpu },
   ];
@@ -150,17 +154,29 @@ export default function Sidebar() {
         }`}
       >
         {active && !collapsed && <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary-cyan" />}
-        <Icon
-          size={20}
-          weight={active ? "bold" : "regular"}
-          aria-hidden="true"
-          className={`shrink-0 transition-colors duration-150 motion-reduce:transition-none ${
-            active ? "text-primary-cyan" : "text-sub group-hover:text-main"
-          }`}
-        />
-        <FadeLabel show={!collapsed} className="truncate">
+        <div className="relative flex items-center justify-center shrink-0">
+          <Icon
+            size={20}
+            weight={active ? "bold" : "regular"}
+            aria-hidden="true"
+            className={`shrink-0 transition-colors duration-150 motion-reduce:transition-none ${
+              active ? "text-primary-cyan" : "text-sub group-hover:text-main"
+            }`}
+          />
+          {collapsed && item.badge > 0 && (
+            <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-primary-cyan font-mono text-[9px] font-bold text-app-bg">
+              {item.badge > 9 ? "9+" : item.badge}
+            </span>
+          )}
+        </div>
+        <FadeLabel show={!collapsed} className="truncate flex-1">
           {item.label}
         </FadeLabel>
+        {!collapsed && item.badge > 0 && (
+          <span className="ml-auto rounded-full bg-primary-cyan/20 border border-primary-cyan/40 px-1.5 py-0.2 font-mono text-[10px] font-bold text-primary-cyan">
+            {item.badge > 99 ? "99+" : item.badge}
+          </span>
+        )}
       </NavLink>
     );
 
@@ -327,7 +343,7 @@ export default function Sidebar() {
         </button>
 
         <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-1">
-          <div className={`flex items-center py-1 ${collapsed ? "justify-center px-0" : "px-1"}`}>
+          <div className={`flex items-center justify-between py-1 ${collapsed ? "justify-center px-0" : "px-1"}`}>
             <Link to="/" className={`flex items-center gap-3 ${collapsed ? "justify-center w-full" : ""}`}>
               <img src="/logo.png" alt="Logo" width={30} height={30} className="h-7 w-auto shrink-0 object-contain" />
               <FadeLabel show={!collapsed} className="flex flex-col leading-none">
@@ -339,6 +355,21 @@ export default function Sidebar() {
                 </span>
               </FadeLabel>
             </Link>
+            {!collapsed && (
+              <button
+                type="button"
+                onClick={openDrawer}
+                title="Open Notification Drawer"
+                className="relative flex size-8 cursor-pointer items-center justify-center rounded-xl border border-border-divider bg-app-bg text-sub transition-colors hover:border-primary-cyan/40 hover:text-primary-cyan"
+              >
+                <Bell size={16} weight={unreadCount > 0 ? "fill" : "regular"} className={unreadCount > 0 ? "text-primary-cyan" : ""} />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary-cyan font-mono text-[9px] font-bold text-app-bg">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
 
           <div className="space-y-4">

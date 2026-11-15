@@ -26,6 +26,10 @@ const DEFAULT_MATRIX = {
   SimDrive: {
     sessions: { 15: 90, 30: 170, 60: 290 },
     extensions: { 15: 80, 30: 150, 60: 260 }
+  },
+  GTA6_Launch: {
+    sessions: { 30: 150, 60: 250 },
+    extensions: { 30: 130, 60: 230 }
   }
 };
 
@@ -42,7 +46,13 @@ export const PricingProvider = ({ children }) => {
   const fetchPricing = useCallback(async () => {
     try {
       const data = await pricingService.getPricing();
-      if (data?.matrix) setMatrix(data.matrix);
+      if (data?.matrix) {
+        setMatrix({
+          ...DEFAULT_MATRIX,
+          ...data.matrix,
+          GTA6_Launch: data.matrix.GTA6_Launch || DEFAULT_MATRIX.GTA6_Launch,
+        });
+      }
       if (data?.offers) setOffers(data.offers);
     } catch (error) {
       console.error('Failed to load pricing config, using defaults', error);

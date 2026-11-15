@@ -18,6 +18,14 @@ export const bookingService = {
     const response = await api.patch(`/bookings/${id}/status`, { status });
     return response.data;
   },
+  extendBooking: async (id, data) => {
+    const response = await api.patch(`/bookings/${id}/extend`, data);
+    return response.data;
+  },
+  approveBooking: async (id) => {
+    const response = await api.patch(`/bookings/${id}/approve`);
+    return response.data;
+  },
   refundBooking: async (id, refundData = {}) => {
     const response = await api.post(`/bookings/${id}/refund`, refundData);
     return response.data;

@@ -12,9 +12,11 @@ import {
   UserCircle,
   SignOut,
   CaretDown,
+  Bell,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
+import { useNotifications } from "../../context/NotificationContext";
 import { notify } from "../../utils/toastController";
 import Sheet from "../ui/Sheet";
 import ConfirmModal from "../ui/ConfirmModal";
@@ -119,6 +121,7 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
+  const { unreadCount, openDrawer } = useNotifications();
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
@@ -234,60 +237,117 @@ export default function Navbar() {
             })}
           </nav>
 
-          <div className="relative" ref={dropdownRef}>
-            <button
-              ref={triggerRef}
-              type="button"
-              onClick={() => setProfileDropdownOpen((open) => !open)}
-              aria-expanded={profileDropdownOpen}
-              aria-controls="profile-menu"
-              className={`group flex cursor-pointer items-center gap-2.5 rounded-xl border border-border-divider/80 bg-card-panel/80 p-1 pl-1.5 transition-all duration-150 hover:border-sub/60 ${FOCUS}`}
-            >
-              <UserAvatar
-                src={photoUrl}
-                name={displayName}
-                className="size-7 shrink-0 overflow-hidden rounded-lg border-border-divider/80 bg-app-bg"
-              />
-              <span className="max-w-28 truncate text-xs font-bold text-main">{displayName}</span>
-              <CaretDown
-                size={12}
-                weight="bold"
-                aria-hidden="true"
-                className={`mr-1.5 shrink-0 text-sub transition-transform duration-200 ${
-                  profileDropdownOpen ? "rotate-180 text-main" : ""
-                }`}
-              />
-            </button>
+          <div className="flex items-center gap-2.5">
+            {/* Notification Bell with Unread Badge */}
+            <Tooltip content="Notifications" position="bottom" delay={0.2}>
+              <button
+                type="button"
+                onClick={openDrawer}
+                aria-label="Open notifications"
+                className={`relative grid size-9 cursor-pointer place-items-center rounded-xl border border-border-divider/80 bg-card-panel/80 text-sub transition-all hover:border-primary-cyan/40 hover:text-primary-cyan ${FOCUS}`}
+              >
+                <Bell
+                  size={18}
+                  weight={unreadCount > 0 ? "fill" : "regular"}
+                  className={unreadCount > 0 ? "text-primary-cyan" : ""}
+                />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-primary-cyan px-1 font-mono text-[10px] font-extrabold text-app-bg shadow-[0_0_10px_#00F5D4]">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            </Tooltip>
 
-            <AnimatePresence>
-              {profileDropdownOpen && (
-                <motion.div
-                  id="profile-menu"
-                  initial={{ opacity: 0, scale: 0.96, y: -6 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.96, y: -6 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.12, ease: "easeOut" }}
-                  style={{ transformOrigin: "top right" }}
-                  className="absolute right-0 z-50 mt-2 w-60 rounded-xl border border-border-divider/80 bg-card-panel/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl"
-                >
-                  <AccountCard
-                    photoUrl={photoUrl}
-                    displayName={displayName}
-                    roleBadgeClass={roleBadgeClass}
-                    role={role}
-                  />
-                  <AccountActions
-                    onNavigate={() => setProfileDropdownOpen(false)}
-                    onLogoutRequest={() => {
-                      setProfileDropdownOpen(false);
-                      setLogoutModalOpen(true);
-                    }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                ref={triggerRef}
+                type="button"
+                onClick={() => setProfileDropdownOpen((open) => !open)}
+                aria-expanded={profileDropdownOpen}
+                aria-controls="profile-menu"
+                className={`group flex cursor-pointer items-center gap-2.5 rounded-xl border border-border-divider/80 bg-card-panel/80 p-1 pl-1.5 transition-all duration-150 hover:border-sub/60 ${FOCUS}`}
+              >
+                <UserAvatar
+                  src={photoUrl}
+                  name={displayName}
+                  className="size-7 shrink-0 overflow-hidden rounded-lg border-border-divider/80 bg-app-bg"
+                />
+                <span className="max-w-28 truncate text-xs font-bold text-main">{displayName}</span>
+                <CaretDown
+                  size={12}
+                  weight="bold"
+                  aria-hidden="true"
+                  className={`mr-1.5 shrink-0 text-sub transition-transform duration-200 ${
+                    profileDropdownOpen ? "rotate-180 text-main" : ""
+                  }`}
+                />
+              </button>
+
+              <AnimatePresence>
+                {profileDropdownOpen && (
+                  <motion.div
+                    id="profile-menu"
+                    initial={{ opacity: 0, scale: 0.96, y: -6 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: -6 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.12, ease: "easeOut" }}
+                    style={{ transformOrigin: "top right" }}
+                    className="absolute right-0 z-50 mt-2 w-60 rounded-xl border border-border-divider/80 bg-card-panel/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl"
+                  >
+                    <AccountCard
+                      photoUrl={photoUrl}
+                      displayName={displayName}
+                      roleBadgeClass={roleBadgeClass}
+                      role={role}
+                    />
+                    <AccountActions
+                      onNavigate={() => setProfileDropdownOpen(false)}
+                      onLogoutRequest={() => {
+                        setProfileDropdownOpen(false);
+                        setLogoutModalOpen(true);
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
+      </header>
+
+      {/* Mobile Top Header Bar with Notification Bell */}
+      <header className="sticky top-0 z-40 flex h-13 w-full items-center justify-between border-b border-border-divider/80 bg-app-bg/90 px-4 backdrop-blur-xl lg:hidden">
+        <Link to="/" className="flex items-center gap-2.5">
+          <img
+            src="/logo.png"
+            alt="Logo"
+            width={24}
+            height={24}
+            className="h-6 w-auto object-contain"
+          />
+          <span translate="no" className="font-logo text-xs font-bold uppercase tracking-wider text-main">
+            THE <span className="text-primary-cyan">GRID</span>
+          </span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={openDrawer}
+          aria-label="Open notifications"
+          className={`relative grid size-9 cursor-pointer place-items-center rounded-xl border border-border-divider/80 bg-card-panel/80 text-sub transition-colors hover:text-primary-cyan ${FOCUS}`}
+        >
+          <Bell
+            size={18}
+            weight={unreadCount > 0 ? "fill" : "regular"}
+            className={unreadCount > 0 ? "text-primary-cyan" : ""}
+          />
+          {unreadCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex min-w-[17px] h-[17px] items-center justify-center rounded-full bg-primary-cyan px-1 font-mono text-[9px] font-extrabold text-app-bg">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </button>
       </header>
 
       <nav

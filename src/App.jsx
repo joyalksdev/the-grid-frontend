@@ -6,7 +6,10 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { TimerProvider } from "./context/TimerContext";
 import { SocketProvider } from "./context/SocketContext";
 import { PricingProvider } from "./context/PricingContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import NotificationDrawer from "./components/notifications/NotificationDrawer";
+import ImportantNotificationModal from "./components/notifications/ImportantNotificationModal";
 
 import RootLayout from "./components/layout/RootLayout";
 import AdminLayout from "./components/layout/AdminLayout";
@@ -30,6 +33,7 @@ import PricingManagerPage from "./pages/admin/PricingManagerPage";
 import GamesManagement from "./pages/admin/GamesManagement";
 import BookingsPage from "./pages/admin/BookingsPage";
 import CreateBookingPage from "./pages/admin/CreateBookingPage";
+import NotificationsPage from "./pages/admin/NotificationsPage";
 
 function FullScreenLoader() {
   return (
@@ -72,6 +76,7 @@ function MainAppRoutes() {
           <Route path="/games" element={<GamesManagement />} />
           <Route path="/booking" element={<BookingsPage />} />
           <Route path="/booking/new" element={<CreateBookingPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/tasks" element={<TaskManager />} />
           <Route path="/hardware" element={<Hardware />} />
           <Route path="/logs/revenue" element={<DailyReport />} />
@@ -119,11 +124,15 @@ export default function App() {
               path="/*"
               element={
                 <SocketProvider>
-                  <TimerProvider>
-                    <PricingProvider>
-                      <MainAppRoutes />
-                    </PricingProvider>
-                  </TimerProvider>
+                  <NotificationProvider>
+                    <TimerProvider>
+                      <PricingProvider>
+                        <MainAppRoutes />
+                        <NotificationDrawer />
+                        <ImportantNotificationModal />
+                      </PricingProvider>
+                    </TimerProvider>
+                  </NotificationProvider>
                 </SocketProvider>
               }
             />

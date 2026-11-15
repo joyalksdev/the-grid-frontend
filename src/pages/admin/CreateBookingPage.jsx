@@ -190,6 +190,7 @@ export default function CreateBookingPage() {
     date: todayISO(),
     startTime: "14:00", // 24-hr stored
     duration: 60,
+    extensionDuration: 0,
     amountPaid: "",
     utr: "",
     selectedGames: [],
@@ -249,6 +250,16 @@ export default function CreateBookingPage() {
     return keys.length > 0 ? keys : [15, 30, 60, 120];
   }, [matrix, formData.mode]);
 
+  // Available extension tiers strictly derived from backend GTA6_Launch.extensions ({ 30: 130, 60: 230 })
+  const availableExtensions = useMemo(() => {
+    const gtaExtTable = matrix?.GTA6_Launch?.extensions || { 30: 130, 60: 230 };
+    const keys = Object.keys(gtaExtTable)
+      .map(Number)
+      .filter((n) => n === 30 || n === 60)
+      .sort((a, b) => a - b);
+    return keys.length > 0 ? keys : [30, 60];
+  }, [matrix]);
+
   useEffect(() => {
     if (!availableDurations.includes(formData.duration)) {
       setFormData((f) => ({
@@ -258,23 +269,62 @@ export default function CreateBookingPage() {
     }
   }, [availableDurations, formData.duration]);
 
-  // Real-time pricing with backend discount calculations
+  useEffect(() => {
+    const extVal = Number(formData.extensionDuration || 0);
+    if (extVal !== 0 && !availableExtensions.includes(extVal)) {
+      setFormData((f) => ({ ...f, extensionDuration: 0 }));
+    }
+  }, [availableExtensions, formData.extensionDuration]);
+
+  const totalSessionDuration = useMemo(() => {
+    return Number(formData.duration || 60) + Number(formData.extensionDuration || 0);
+  }, [formData.duration, formData.extensionDuration]);
+
+  // Real-time pricing (base session + GTA6_Launch extension) synced from backend pricingService
   const currentPricing = useMemo(() => {
-    return calculateSessionPricing(formData.mode, formData.duration, false) || {
+    const base = calculateSessionPricing(formData.mode, formData.duration, false) || {
       basePrice: 0,
       finalPrice: 0,
       discountAmount: 0,
       activeOffer: null,
       hasDiscount: false,
     };
-  }, [formData.mode, formData.duration, calculateSessionPricing]);
 
-  // Auto-sync amountPaid with discounted finalPrice when mode/duration/discounts change
+    const extMins = Number(formData.extensionDuration || 0);
+    const ext =
+      extMins > 0
+        ? calculateSessionPricing("GTA6_Launch", extMins, true) || {
+            basePrice: 0,
+            finalPrice: 0,
+            discountAmount: 0,
+            activeOffer: null,
+            hasDiscount: false,
+          }
+        : {
+            basePrice: 0,
+            finalPrice: 0,
+            discountAmount: 0,
+            activeOffer: null,
+            hasDiscount: false,
+          };
+
+    return {
+      baseSessionFinal: base.finalPrice,
+      extensionFinal: ext.finalPrice,
+      basePrice: base.basePrice + ext.basePrice,
+      finalPrice: base.finalPrice + ext.finalPrice,
+      discountAmount: base.discountAmount + ext.discountAmount,
+      activeOffer: base.activeOffer || ext.activeOffer,
+      hasDiscount: base.hasDiscount || ext.hasDiscount,
+    };
+  }, [formData.mode, formData.duration, formData.extensionDuration, calculateSessionPricing]);
+
+  // Auto-sync amountPaid with discounted finalPrice when mode/duration/extension/discounts change
   useEffect(() => {
     if (currentPricing.finalPrice > 0) {
       setFormData((f) => ({ ...f, amountPaid: String(currentPricing.finalPrice) }));
     }
-  }, [currentPricing.finalPrice, formData.mode, formData.duration]);
+  }, [currentPricing.finalPrice, formData.mode, formData.duration, formData.extensionDuration]);
 
   // Selected screen object
   const currentScreen = useMemo(() => {
@@ -321,7 +371,7 @@ export default function CreateBookingPage() {
     return BASE_TIME_SLOTS.map((slot12) => {
       const slot24 = to24HourTime(slot12);
       const isBooked = screenBookings.some((b) =>
-        checkOverlap(slot24, formData.duration, b.startTime, b.duration)
+        checkOverlap(slot24, totalSessionDuration, b.startTime, b.duration)
       );
       return {
         slot12,
@@ -329,7 +379,7 @@ export default function CreateBookingPage() {
         isBooked,
       };
     });
-  }, [currentScreen, existingDateBookings, formData.duration]);
+  }, [currentScreen, existingDateBookings, totalSessionDuration]);
 
   const handlePickSlot = (slot24) => {
     setFormData((prev) => ({ ...prev, startTime: slot24 }));
@@ -436,7 +486,9 @@ export default function CreateBookingPage() {
         mode: formData.mode,
         date: formData.date,
         startTime: formData.startTime,
-        duration: Number(formData.duration),
+        duration: totalSessionDuration,
+        baseSessionDuration: Number(formData.duration),
+        extensionDuration: Number(formData.extensionDuration || 0),
         amountPaid: finalPaid,
         estimatedCost: finalPaid,
         utr: formData.utr ? formData.utr.trim() : "",
@@ -595,7 +647,7 @@ export default function CreateBookingPage() {
 
               {/* Duration Pills — with live discount calculations from backend */}
               <div>
-                <p className="text-xs text-sub mb-2 font-medium">Session Duration:</p>
+                <p className="text-xs text-sub mb-2 font-medium">Base Session Duration:</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {availableDurations.map((mins) => {
                     const isSelected = formData.duration === mins;
@@ -610,7 +662,6 @@ export default function CreateBookingPage() {
                           setFormData((f) => ({
                             ...f,
                             duration: mins,
-                            amountPaid: String(tierPricing.finalPrice),
                           }));
                         }}
                         className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 transition-all cursor-pointer ${
@@ -650,6 +701,79 @@ export default function CreateBookingPage() {
                               Discount Active
                             </span>
                           )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Add Extension Selector — Strictly the 2 extensions from GTA6_Launch ({ 30: 130, 60: 230 }) */}
+              <div className="pt-3 border-t border-border-divider/60">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-sub font-medium flex items-center gap-1.5">
+                    <Plus size={13} className="text-primary-cyan" weight="bold" />
+                    Add Extension (Optional):
+                  </p>
+                  {formData.extensionDuration > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setFormData((f) => ({ ...f, extensionDuration: 0 }))}
+                      className="text-[11px] font-mono font-bold text-rose-400 hover:underline cursor-pointer"
+                    >
+                      Remove Extension (Total: {totalSessionDuration}m)
+                    </button>
+                  ) : (
+                    <span className="text-[11px] font-mono text-sub">
+                      Click to add +30m or +1hr
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  {availableExtensions.map((extMins) => {
+                    const isSelected = Number(formData.extensionDuration || 0) === extMins;
+                    const extTierPricing = calculateSessionPricing("GTA6_Launch", extMins, true);
+                    const extLabel = extMins === 60 ? "+1 Hour (60 Mins)" : `+${extMins} Mins`;
+
+                    return (
+                      <button
+                        key={`ext-${extMins}`}
+                        type="button"
+                        onClick={() =>
+                          setFormData((f) => ({
+                            ...f,
+                            extensionDuration: isSelected ? 0 : extMins,
+                          }))
+                        }
+                        className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-primary-cyan bg-primary-cyan text-black font-bold shadow-md shadow-primary-cyan/20"
+                            : "border-border-divider bg-app-bg text-main hover:border-primary-cyan/40"
+                        }`}
+                      >
+                        <span className="text-xs font-semibold">{extLabel}</span>
+                        <div className="flex items-center gap-1">
+                          {extTierPricing.hasDiscount && (
+                            <span
+                              className={`line-through text-[10px] font-mono ${
+                                isSelected ? "text-black/60" : "text-sub"
+                              }`}
+                            >
+                              {formatINR(extTierPricing.basePrice)}
+                            </span>
+                          )}
+                          <span
+                            className={`text-xs font-mono font-bold ${
+                              isSelected
+                                ? "text-black"
+                                : extTierPricing.hasDiscount
+                                ? "text-emerald-400"
+                                : "text-primary-cyan"
+                            }`}
+                          >
+                            +{formatINR(extTierPricing.finalPrice)}
+                          </span>
                         </div>
                       </button>
                     );
@@ -1047,7 +1171,10 @@ export default function CreateBookingPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sub">Mode &amp; Duration:</span>
                   <span className="font-bold text-main font-mono">
-                    {formData.mode} · {formData.duration}m
+                    {formData.mode} · {totalSessionDuration}m
+                    {formData.extensionDuration > 0
+                      ? ` (${formData.duration}m + ${formData.extensionDuration}m ext)`
+                      : ""}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
