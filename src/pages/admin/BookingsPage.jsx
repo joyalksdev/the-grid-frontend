@@ -1,5 +1,6 @@
 // src/pages/admin/BookingsPage.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Clock,
@@ -16,6 +17,14 @@ import {
   CaretRight,
   ClockCounterClockwise,
   ArrowUUpLeft,
+  DotsThreeVertical,
+  WhatsappLogo,
+  Copy,
+  ArrowSquareOut,
+  CurrencyInr,
+  Receipt,
+  ArrowsClockwise,
+  Check,
 } from "@phosphor-icons/react";
 import { bookingService } from "../../services/bookingService";
 import { useSocket } from "../../context/SocketContext";
@@ -23,13 +32,15 @@ import { notify } from "../../utils/toastController";
 import { formatINR } from "../../utils/format";
 import Loader from "../../components/ui/Loader";
 import ConfirmModal from "../../components/ui/ConfirmModal";
-import CreateBookingModal from "../../components/bookings/CreateBookingModal";
+import Dropdown from "../../components/ui/Dropdown";
+import RefundModal from "../../components/bookings/RefundModal";
 
 const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan";
 
 const TABS = [
   { id: "all", label: "All" },
   { id: "active", label: "Active" },
+  { id: "refunded", label: "Refunded" },
   { id: "history", label: "History" },
 ];
 
@@ -48,11 +59,15 @@ function format12HourTime(timeStr) {
   return `${String(hour).padStart(2, "0")}:${minute} ${ampm} IST`;
 }
 
-// Simple embedded History Sub-Component (rendered conditionally without routing)
-function HistoryView({ bookings, onUndo }) {
+// History View Sub-Component
+function HistoryView({ bookings, onUndo, onOpenRefund }) {
   const completedList = useMemo(() => {
     return bookings.filter(
-      (b) => b.status === "checked_in" || b.status === "completed" || b.status === "cancelled"
+      (b) =>
+        b.status === "checked_in" ||
+        b.status === "completed" ||
+        b.status === "cancelled" ||
+        b.status === "refunded"
     );
   }, [bookings]);
 
@@ -61,7 +76,7 @@ function HistoryView({ bookings, onUndo }) {
       <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border-divider bg-card-panel/30">
         <ClockCounterClockwise size={28} className="text-sub mb-2" />
         <h3 className="text-sm font-bold text-main">No history records yet</h3>
-        <p className="text-xs text-sub mt-0.5">Completed or cancelled sessions will appear here.</p>
+        <p className="text-xs text-sub mt-0.5">Completed, cancelled, or refunded sessions will appear here.</p>
       </div>
     );
   }
@@ -70,40 +85,78 @@ function HistoryView({ bookings, onUndo }) {
     <div className="space-y-3">
       <div className="bg-card-panel border border-border-divider rounded-2xl overflow-hidden shadow-sm">
         <div className="px-4 py-3 bg-app-bg/50 border-b border-border-divider flex items-center justify-between">
-          <span className="text-xs font-bold text-main uppercase tracking-wider">Session Audit Log & History</span>
+          <span className="text-xs font-bold text-main uppercase tracking-wider">Session Audit Log &amp; History</span>
           <span className="text-[10px] font-mono text-sub">{completedList.length} total records</span>
         </div>
         <div className="divide-y divide-border-divider/50">
-          {completedList.map((item) => (
-            <div key={item._id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-app-bg/30 transition-colors">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-main">{item.customerName}</span>
-                  <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-md border ${
-                    item.status === "cancelled" ? "border-rose-400/30 bg-rose-400/10 text-rose-400" : "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
-                  }`}>
-                    {item.status}
-                  </span>
-                </div>
-                <p className="text-xs text-sub font-mono">
-                  {item.station || item.screenId?.name || "Station"} • {item.date} at {format12HourTime(item.startTime)} ({item.duration}m)
-                </p>
-              </div>
+          {completedList.map((item) => {
+            const isRefunded = item.status === "refunded";
+            const isCancelled = item.status === "cancelled";
 
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-mono font-bold text-available">{formatINR(item.estimatedCost || 0)}</span>
-                {/* Undo accidental action */}
-                <button
-                  type="button"
-                  onClick={() => onUndo(item._id, "confirmed")}
-                  className="flex items-center gap-1 text-xs text-primary-cyan hover:underline bg-primary-cyan/10 border border-primary-cyan/20 px-2.5 py-1 rounded-lg cursor-pointer"
-                  title="Revert status back to confirmed"
-                >
-                  <ArrowUUpLeft size={13} /> Undo
-                </button>
+            return (
+              <div
+                key={item._id}
+                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-app-bg/30 transition-colors"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-main">{item.customerName}</span>
+                    <span
+                      className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-md border ${
+                        isRefunded
+                          ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
+                          : isCancelled
+                          ? "border-rose-400/30 bg-rose-400/10 text-rose-400"
+                          : "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                    {item.bookingCode && (
+                      <span className="text-[10px] font-mono text-sub">{item.bookingCode}</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-sub font-mono">
+                    {item.station || item.screen?.name || "Station"} • {item.date} at{" "}
+                    {format12HourTime(item.startTime)} ({item.duration}m, {item.mode})
+                  </p>
+                  {isRefunded && item.refundDetails?.refundAmount !== undefined && (
+                    <p className="text-[11px] text-amber-400 font-mono">
+                      Refunded: {formatINR(item.refundDetails.refundAmount)} • Ref:{" "}
+                      {item.refundDetails.refundTransactionRef || "N/A"} • Reason:{" "}
+                      {item.refundDetails.refundReason || "Admin processed"}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono font-bold text-available">
+                    {formatINR(item.totalAmount !== undefined ? item.totalAmount : item.estimatedCost || 0)}
+                  </span>
+                  
+                  {/* Action buttons */}
+                  {!isRefunded && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenRefund(item)}
+                      className="flex items-center gap-1 text-xs text-amber-400 hover:underline bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded-lg cursor-pointer"
+                    >
+                      <CurrencyInr size={13} /> Refund
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => onUndo(item._id, "confirmed")}
+                    className="flex items-center gap-1 text-xs text-primary-cyan hover:underline bg-primary-cyan/10 border border-primary-cyan/20 px-2.5 py-1 rounded-lg cursor-pointer"
+                    title="Revert status back to confirmed"
+                  >
+                    <ArrowUUpLeft size={13} /> Undo
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -111,12 +164,13 @@ function HistoryView({ bookings, onUndo }) {
 }
 
 export default function BookingsPage({ isStaff = false }) {
+  const navigate = useNavigate();
   const { socket } = useSocket() || {};
   const [bookings, setBookings] = useState([]);
   const [allBookingsForMonth, setAllBookingsForMonth] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("list"); // "list" | "calendar"
-  const [activeTab, setActiveTab] = useState("all"); // "all" | "active" | "history"
+  const [activeTab, setActiveTab] = useState("all"); // "all" | "active" | "refunded" | "history"
   const [selectedDate, setSelectedDate] = useState(todayISO());
 
   const [calendarDate, setCalendarDate] = useState(new Date());
@@ -124,6 +178,10 @@ export default function BookingsPage({ isStaff = false }) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookingToDelete, setBookingToDelete] = useState(null);
+
+  // Refund Modal State
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [bookingToRefund, setBookingToRefund] = useState(null);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -168,12 +226,33 @@ export default function BookingsPage({ isStaff = false }) {
   const handleStatusChange = async (id, newStatus) => {
     try {
       await bookingService.updateBookingStatus(id, newStatus);
-      notify.success(`Status updated successfully`);
+      notify.success(`Status updated to ${newStatus}`);
       fetchBookings();
       fetchMonthBookings();
     } catch (error) {
       notify.error("Failed to update status");
     }
+  };
+
+  const handleResendTicket = async (id, phone) => {
+    try {
+      await bookingService.resendTicket(id);
+      notify.success(`Fast2SMS WhatsApp ticket re-sent to ${phone || "customer"}!`);
+    } catch (error) {
+      notify.error(error.response?.data?.error || "Failed to resend WhatsApp pass");
+    }
+  };
+
+  const handleCopyTicketUrl = (token) => {
+    if (!token) {
+      notify.error("No ticket token found for this booking");
+      return;
+    }
+    const url = `https://thegridgaming.fun/ticket/${token}`;
+    navigator.clipboard.writeText(url).then(
+      () => notify.success("Ticket link copied to clipboard!"),
+      () => notify.error("Failed to copy link")
+    );
   };
 
   const handleDeleteConfirm = async () => {
@@ -196,10 +275,27 @@ export default function BookingsPage({ isStaff = false }) {
     }
   };
 
+  const openRefundModal = (booking) => {
+    setBookingToRefund(booking);
+    setRefundModalOpen(true);
+  };
+
   const filteredBookings = useMemo(() => {
     if (activeTab === "all") return bookings;
     if (activeTab === "active") {
       return bookings.filter((b) => b.status === "confirmed" || b.status === "checked_in");
+    }
+    if (activeTab === "refunded") {
+      return bookings.filter((b) => b.status === "refunded");
+    }
+    if (activeTab === "history") {
+      return bookings.filter(
+        (b) =>
+          b.status === "checked_in" ||
+          b.status === "completed" ||
+          b.status === "cancelled" ||
+          b.status === "refunded"
+      );
     }
     return bookings;
   }, [bookings, activeTab]);
@@ -227,16 +323,16 @@ export default function BookingsPage({ isStaff = false }) {
   }, [year, month, firstDayIndex, daysInMonth]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 pb-20 font-body text-main px-4 sm:px-6">
+    <div className="mx-auto  space-y-6 pb-20 font-body text-main px-4 sm:px-6">
       
       {/* Clean Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-b border-border-divider pb-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-main">
-            Reservations & Schedule
+            Reservations &amp; Booking Management
           </h1>
           <p className="text-xs text-sub mt-0.5">
-            Manage station bookings in 12-hr Indian Standard Time (IST).
+            Admin booking creation with Fast2SMS WhatsApp utility tickets, UTR audit, and refunds.
           </p>
         </div>
 
@@ -264,101 +360,302 @@ export default function BookingsPage({ isStaff = false }) {
 
           <button
             type="button"
-            onClick={() => setIsCreateOpen(true)}
+            onClick={() => navigate("/booking/new")}
             className={`flex h-9 items-center gap-1.5 rounded-xl bg-primary-cyan px-3.5 text-xs font-bold text-app-bg shadow-md hover:opacity-90 cursor-pointer ${FOCUS}`}
           >
-            <Plus size={14} weight="bold" /> New
+            <Plus size={14} weight="bold" /> Create / Add Booking
           </button>
         </div>
       </div>
 
-      {/* Simple Filter Bar / Tabs */}
+      {/* Filter Tabs */}
       <div className="flex items-center justify-between gap-3 bg-card-panel p-3 rounded-2xl border border-border-divider">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all shrink-0 ${
-                activeTab === tab.id
-                  ? "bg-primary-cyan/15 text-primary-cyan font-bold border border-primary-cyan/30"
-                  : "text-sub hover:text-main"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            const count =
+              tab.id === "all"
+                ? bookings.length
+                : tab.id === "active"
+                ? bookings.filter((b) => b.status === "confirmed" || b.status === "checked_in").length
+                : tab.id === "refunded"
+                ? bookings.filter((b) => b.status === "refunded").length
+                : bookings.filter(
+                    (b) =>
+                      b.status === "checked_in" ||
+                      b.status === "completed" ||
+                      b.status === "cancelled" ||
+                      b.status === "refunded"
+                  ).length;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 ${
+                  activeTab === tab.id
+                    ? "bg-primary-cyan/15 text-primary-cyan font-bold border border-primary-cyan/30"
+                    : "text-sub hover:text-main"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-app-bg font-mono opacity-80">
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Conditional Rendering for History View vs Main List/Calendar */}
+      {/* Main Content Area */}
       {activeTab === "history" ? (
-        <HistoryView bookings={bookings} onUndo={handleStatusChange} />
+        <HistoryView
+          bookings={bookings}
+          onUndo={handleStatusChange}
+          onOpenRefund={openRefundModal}
+        />
       ) : viewMode === "list" ? (
         loading ? (
-          <Loader variant="skeleton-table" lines={4} text="Loading..." />
+          <Loader variant="skeleton-table" lines={4} text="Loading reservations..." />
         ) : filteredBookings.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border-divider bg-card-panel/30">
-            <BookmarkSimple size={28} className="text-sub mb-2" />
-            <h3 className="text-sm font-bold text-main">No reservations found</h3>
-            <p className="text-xs text-sub mt-0.5">No bookings match this filter.</p>
+          <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border-divider bg-card-panel/30 space-y-3">
+            <BookmarkSimple size={28} className="text-sub" />
+            <div>
+              <h3 className="text-sm font-bold text-main">No reservations found</h3>
+              <p className="text-xs text-sub mt-0.5">No bookings match this filter.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/booking/new")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary-cyan/15 border border-primary-cyan/30 text-primary-cyan hover:bg-primary-cyan/25 text-xs font-semibold cursor-pointer"
+            >
+              <Plus size={13} weight="bold" /> New Reservation
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4  gap-3">
             {filteredBookings.map((b) => {
               const isConfirmed = b.status === "confirmed";
-              const isCheckedIn = b.status === "checked_in" || b.status === "completed";
+              const isCheckedIn = b.status === "checked_in";
+              const isCompleted = b.status === "completed";
+              const isRefunded = b.status === "refunded";
+              const isCancelled = b.status === "cancelled";
+
+              const finalCost =
+                b.totalAmount !== undefined ? b.totalAmount : b.estimatedCost || 0;
+
+              // Build 3-dots action menu items
+              const menuItems = [
+                {
+                  label: "Resend WhatsApp Pass",
+                  icon: <WhatsappLogo size={15} className="text-emerald-400" />,
+                  onClick: () => handleResendTicket(b._id, b.phoneNumber),
+                },
+                {
+                  label: "Copy Pass Link",
+                  icon: <Copy size={15} className="text-primary-cyan" />,
+                  onClick: () => handleCopyTicketUrl(b.ticketToken),
+                },
+                {
+                  label: "Open Public Pass",
+                  icon: <ArrowSquareOut size={15} className="text-sub" />,
+                  onClick: () => {
+                    if (b.ticketToken) {
+                      window.open(`https://thegridgaming.fun/ticket/${b.ticketToken}`, "_blank");
+                    }
+                  },
+                },
+                { type: "divider" },
+                ...(isConfirmed
+                  ? [
+                      {
+                        label: "Check In Player",
+                        icon: <CheckCircle size={15} className="text-emerald-400" />,
+                        onClick: () => handleStatusChange(b._id, "checked_in"),
+                      },
+                    ]
+                  : []),
+                ...(isCheckedIn
+                  ? [
+                      {
+                        label: "Complete Session",
+                        icon: <Check size={15} className="text-indigo-400" />,
+                        onClick: () => handleStatusChange(b._id, "completed"),
+                      },
+                    ]
+                  : []),
+                ...(!isConfirmed && !isRefunded
+                  ? [
+                      {
+                        label: "Undo to Confirmed",
+                        icon: <ArrowUUpLeft size={15} className="text-primary-cyan" />,
+                        onClick: () => handleStatusChange(b._id, "confirmed"),
+                      },
+                    ]
+                  : []),
+                ...(!isRefunded
+                  ? [
+                      {
+                        label: "Process Refund",
+                        icon: <CurrencyInr size={15} className="text-amber-400" />,
+                        onClick: () => openRefundModal(b),
+                      },
+                    ]
+                  : []),
+                ...(isConfirmed
+                  ? [
+                      {
+                        label: "Cancel Booking",
+                        icon: <XCircle size={15} className="text-rose-400" />,
+                        onClick: () => handleStatusChange(b._id, "cancelled"),
+                      },
+                    ]
+                  : []),
+                ...(!isStaff
+                  ? [
+                      { type: "divider" },
+                      {
+                        label: "Delete Booking",
+                        icon: <Trash size={15} className="text-rose-400" />,
+                        danger: true,
+                        onClick: () => {
+                          setBookingToDelete(b._id);
+                          setDeleteModalOpen(true);
+                        },
+                      },
+                    ]
+                  : []),
+              ];
 
               return (
-                <div key={b._id} className="bg-card-panel border border-border-divider rounded-2xl p-4 flex flex-col justify-between space-y-3 shadow-sm hover:border-primary-cyan/30 transition-all">
+                <div
+                  key={b._id}
+                  className="bg-card-panel border border-border-divider rounded-2xl p-4 flex flex-col justify-between space-y-3 shadow-sm hover:border-primary-cyan/30 transition-all"
+                >
                   <div className="space-y-2">
+                    {/* Header Row: Station + Status + Three Dots Menu */}
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-primary-cyan uppercase tracking-wide">
-                        {b.station || b.screenId?.name || "Station"}
+                        {b.station || b.screen?.name || "Station"}
                       </span>
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${
-                        isConfirmed ? "border-primary-cyan/30 bg-primary-cyan/10 text-primary-cyan" :
-                        isCheckedIn ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400" :
-                        "border-rose-400/30 bg-rose-400/10 text-rose-400"
-                      }`}>
-                        {b.status.replace("_", " ")}
-                      </span>
+                      
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${
+                            isConfirmed
+                              ? "border-primary-cyan/30 bg-primary-cyan/10 text-primary-cyan"
+                              : isCheckedIn
+                              ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
+                              : isCompleted
+                              ? "border-indigo-400/30 bg-indigo-400/10 text-indigo-400"
+                              : isRefunded
+                              ? "border-amber-400/30 bg-amber-400/10 text-amber-400 font-bold"
+                              : "border-rose-400/30 bg-rose-400/10 text-rose-400"
+                          }`}
+                        >
+                          {b.status.replace("_", " ")}
+                        </span>
+
+                        {/* Three Dots Menu */}
+                        <Dropdown
+                          trigger={
+                            <button
+                              type="button"
+                              className="p-1 rounded-lg text-sub hover:text-main hover:bg-app-bg transition-colors cursor-pointer"
+                              title="Booking options"
+                            >
+                              <DotsThreeVertical size={16} weight="bold" />
+                            </button>
+                          }
+                          items={menuItems}
+                          align="right"
+                        />
+                      </div>
                     </div>
 
+                    {/* Customer Info */}
                     <div>
-                      <h3 className="text-sm font-bold text-main flex items-center gap-1.5">
-                        <User size={14} className="text-primary-cyan shrink-0" /> {b.customerName}
-                      </h3>
-                      <p className="text-xs text-sub flex items-center gap-1 mt-0.5">
-                        <Phone size={12} /> {b.phoneNumber}
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-main flex items-center gap-1.5">
+                          <User size={14} className="text-primary-cyan shrink-0" /> {b.customerName}
+                        </h3>
+                        {b.bookingCode && (
+                          <span className="text-[10px] font-mono text-sub">{b.bookingCode}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-sub flex items-center gap-1 mt-0.5 font-mono">
+                        <Phone size={12} className="text-emerald-400" /> {b.phoneNumber}
                       </p>
                     </div>
 
+                    {/* Time & Mode pill */}
                     <div className="flex items-center justify-between bg-app-bg px-2.5 py-1.5 rounded-xl text-xs">
                       <span className="font-bold text-main flex items-center gap-1">
                         <Clock size={13} className="text-primary-cyan" /> {format12HourTime(b.startTime)}
                       </span>
-                      <span className="text-sub">{b.duration}m ({b.mode})</span>
+                      <span className="text-sub font-mono">{b.duration}m ({b.mode})</span>
                     </div>
 
+                    {/* Games if any */}
                     {b.selectedGames && b.selectedGames.length > 0 && (
                       <p className="text-[11px] text-sub truncate">
                         🎮 Games: {b.selectedGames.join(", ")}
                       </p>
                     )}
 
-                    {b.estimatedCost > 0 && (
-                      <div className="flex items-center justify-between text-xs px-1">
-                        <span className="text-sub">Total:</span>
-                        <span className="font-bold text-available">{formatINR(b.estimatedCost)}</span>
+                    {/* Amount & UTR / Verification */}
+                    <div className="flex items-center justify-between text-xs px-1 pt-0.5">
+                      <span className="text-sub">Amount Paid:</span>
+                      <span className="font-bold text-available font-mono">{formatINR(finalCost)}</span>
+                    </div>
+
+                    {b.utr && (
+                      <div className="flex items-center justify-between text-[11px] px-1 font-mono bg-emerald-500/5 rounded-lg py-1 border border-emerald-500/20">
+                        <span className="text-sub flex items-center gap-1">
+                          <Receipt size={12} className="text-emerald-400" /> UTR / Ref:
+                        </span>
+                        <span className="font-bold text-emerald-400">{b.utr}</span>
+                      </div>
+                    )}
+
+                    {/* Refund Audit Box */}
+                    {isRefunded && (
+                      <div className="mt-1 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] space-y-0.5 font-mono">
+                        <div className="flex items-center justify-between text-amber-300 font-bold">
+                          <span>Refunded:</span>
+                          <span>{formatINR(b.refundDetails?.refundAmount || finalCost)}</span>
+                        </div>
+                        {b.refundDetails?.refundTransactionRef && (
+                          <p className="text-sub text-[10px] truncate">
+                            Ref: {b.refundDetails.refundTransactionRef}
+                          </p>
+                        )}
+                        {b.refundDetails?.refundReason && (
+                          <p className="text-sub text-[10px] truncate">
+                            Reason: {b.refundDetails.refundReason}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
 
+                  {/* Card Footer */}
                   <div className="flex items-center justify-between pt-2 border-t border-border-divider/50">
-                    <span className="text-[10px] text-sub">{b.date}</span>
-                    <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-sub font-mono">{b.date}</span>
+
+                    <div className="flex items-center gap-1.5">
+                      {/* WhatsApp trigger shortcut */}
+                      <button
+                        type="button"
+                        onClick={() => handleResendTicket(b._id, b.phoneNumber)}
+                        className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                        title="Resend WhatsApp Ticket Pass"
+                      >
+                        <WhatsappLogo size={14} weight="fill" />
+                      </button>
+
+                      {/* Quick Primary State Change Button */}
                       {isConfirmed && (
                         <button
                           type="button"
@@ -368,19 +665,18 @@ export default function BookingsPage({ isStaff = false }) {
                           <CheckCircle size={13} /> Check In
                         </button>
                       )}
-                      
-                      {/* Undo / Cancel button */}
-                      {isConfirmed && (
+
+                      {isCheckedIn && (
                         <button
                           type="button"
-                          onClick={() => handleStatusChange(b._id, "cancelled")}
-                          className="text-xs text-sub hover:text-rose-400 px-2 py-1 cursor-pointer"
+                          onClick={() => handleStatusChange(b._id, "completed")}
+                          className="flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 text-xs px-2.5 py-1 rounded-lg font-semibold cursor-pointer"
                         >
-                          Cancel
+                          <Check size={13} /> Complete
                         </button>
                       )}
 
-                      {!isConfirmed && (
+                      {!isConfirmed && !isRefunded && (
                         <button
                           type="button"
                           onClick={() => handleStatusChange(b._id, "confirmed")}
@@ -388,17 +684,6 @@ export default function BookingsPage({ isStaff = false }) {
                           title="Undo to Confirmed"
                         >
                           <ArrowUUpLeft size={12} /> Undo
-                        </button>
-                      )}
-
-                      {!isStaff && (
-                        <button
-                          type="button"
-                          onClick={() => { setBookingToDelete(b._id); setDeleteModalOpen(true); }}
-                          className="p-1 text-rose-400 hover:bg-rose-500/10 rounded-lg cursor-pointer"
-                          title="Delete booking"
-                        >
-                          <Trash size={13} />
                         </button>
                       )}
                     </div>
@@ -409,7 +694,7 @@ export default function BookingsPage({ isStaff = false }) {
           </div>
         )
       ) : (
-        /* Optimized Big Calendar View */
+        /* Month Calendar View */
         <div className="bg-card-panel border border-border-divider rounded-2xl p-4 sm:p-6 shadow-xl">
           <div className="flex items-center justify-between pb-4 border-b border-border-divider mb-4">
             <h2 className="text-base font-bold text-main">
@@ -481,12 +766,15 @@ export default function BookingsPage({ isStaff = false }) {
         </div>
       )}
 
-      <CreateBookingModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onBookingCreated={() => { fetchBookings(); fetchMonthBookings(); }}
+      {/* Refund Processing Modal */}
+      <RefundModal
+        isOpen={refundModalOpen}
+        onClose={() => { setRefundModalOpen(false); setBookingToRefund(null); }}
+        booking={bookingToRefund}
+        onRefundProcessed={() => { fetchBookings(); fetchMonthBookings(); }}
       />
 
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}

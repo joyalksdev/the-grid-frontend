@@ -29,6 +29,7 @@ import DailyReport from "./pages/DailyReport";
 import PricingManagerPage from "./pages/admin/PricingManagerPage";
 import GamesManagement from "./pages/admin/GamesManagement";
 import BookingsPage from "./pages/admin/BookingsPage";
+import CreateBookingPage from "./pages/admin/CreateBookingPage";
 
 function FullScreenLoader() {
   return (
@@ -70,6 +71,7 @@ function MainAppRoutes() {
           <Route path="/logs" element={<Logs />} />
           <Route path="/games" element={<GamesManagement />} />
           <Route path="/booking" element={<BookingsPage />} />
+          <Route path="/booking/new" element={<CreateBookingPage />} />
           <Route path="/tasks" element={<TaskManager />} />
           <Route path="/hardware" element={<Hardware />} />
           <Route path="/logs/revenue" element={<DailyReport />} />
@@ -89,6 +91,7 @@ function MainAppRoutes() {
         <Route path="/logs" element={<Logs />} />
         <Route path="/logs/revenue" element={<DailyReport />} />
         <Route path="/booking" element={<BookingsPage />} />
+        <Route path="/booking/new" element={<CreateBookingPage />} />
         <Route path="/games" element={<GamesManagement />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/tasks" element={<Tasks />} />

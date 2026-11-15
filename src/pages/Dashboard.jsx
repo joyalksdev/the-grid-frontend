@@ -74,7 +74,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 pb-24 font-body text-main px-4 sm:px-6">
       {/* Header & metrics */}
       <div className="flex flex-col justify-between gap-5 border-b border-border-divider pb-6 md:flex-row md:items-end">
         <div>

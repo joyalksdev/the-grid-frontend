@@ -8,46 +8,66 @@ import {
   PencilSimple,
   MagnifyingGlass,
   ArrowsLeftRight,
-  Check,
-  Cpu,
+  Star,
+  Eye,
+  EyeSlash,
+  Users,
 } from "@phosphor-icons/react";
 import { gameService } from "../../services/gameService";
 import { screenService } from "../../services/screenService";
 import { notify } from "../../utils/toastController";
 import Loader from "../../components/ui/Loader";
 import ConfirmModal from "../../components/ui/ConfirmModal";
-import Sheet, { INPUT_CLASS, PRIMARY_BTN } from "../../components/ui/Sheet";
+import { INPUT_CLASS } from "../../components/ui/Sheet";
+import GameFormSheet from "../../components/games/GameFormSheet";
+import { EMPTY_GAME_FORM, getModeLabel } from "../../constants/games";
 import api from "../../services/api";
 
 const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-cyan";
+const ICON_BTN =
+  "size-7 rounded-lg bg-black/70 backdrop-blur-md text-white flex items-center justify-center transition-colors cursor-pointer";
+
+const idOf = (ref) => ref?._id || ref;
+
+function gameToForm(game) {
+  return {
+    ...EMPTY_GAME_FORM,
+    title: game.title || "",
+    genre: game.genre || "",
+    description: game.description || "",
+    platform: game.platform || "PS5",
+    supportedModes: game.supportedModes?.length ? game.supportedModes : ["Single"],
+    recommendedMode: game.recommendedMode || game.supportedModes?.[0] || "Single",
+    minPlayers: game.minPlayers || 1,
+    maxPlayers: game.maxPlayers || 1,
+    availableScreens: (game.availableScreens || []).map(idOf),
+    assignedHardware: (game.assignedHardware || []).map(idOf),
+    isFeatured: Boolean(game.isFeatured),
+    isActive: game.isActive !== false,
+    thumbnailPreview: game.thumbnail?.url || "",
+    coverPreview: game.cover?.url || game.coverUrl || "",
+  };
+}
 
 export default function GamesManagement() {
   const [games, setGames] = useState([]);
   const [screens, setScreens] = useState([]);
   const [hardwareList, setHardwareList] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // View & Filter States
+
+  // View & filters
   const [viewMode, setViewMode] = useState("store"); // "store" | "admin_columns"
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("all");
 
-  // Modal / Sheet State
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Form sheet
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGame, setEditingGame] = useState(null);
-  const [formData, setFormData] = useState({
-    title: "",
-    genre: "",
-    platform: "PS5",
-    coverUrl: "",
-    availableScreens: [],
-    assignedHardware: [],
-  });
-
-  // Delete State
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [gameToDelete, setGameToDelete] = useState(null);
+  const [form, setForm] = useState(EMPTY_GAME_FORM);
   const [submitting, setSubmitting] = useState(false);
+
+  // Delete
+  const [gameToDelete, setGameToDelete] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -60,8 +80,8 @@ export default function GamesManagement() {
       setGames(Array.isArray(gamesData) ? gamesData : []);
       setScreens(Array.isArray(screensData) ? screensData : []);
       setHardwareList(Array.isArray(hardwareData) ? hardwareData : []);
-    } catch (error) {
-      notify.error("Failed to load catalog assets");
+    } catch {
+      notify.error("Failed to load game catalog");
     } finally {
       setLoading(false);
     }
@@ -71,64 +91,63 @@ export default function GamesManagement() {
     fetchData();
   }, [fetchData]);
 
+  // Replace a single game in local state (avoids refetching everything)
+  const upsertLocal = (saved) =>
+    setGames((prev) => {
+      const exists = prev.some((g) => g._id === saved._id);
+      return exists ? prev.map((g) => (g._id === saved._id ? saved : g)) : [...prev, saved];
+    });
+
   const genres = useMemo(() => {
     const set = new Set(games.map((g) => g.genre).filter(Boolean));
     return ["all", ...Array.from(set)];
   }, [games]);
 
   const filteredGames = useMemo(() => {
+    const q = searchQuery.toLowerCase();
     return games.filter((g) => {
-      const matchQuery = g.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         g.genre.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchQuery =
+        g.title.toLowerCase().includes(q) || (g.genre || "").toLowerCase().includes(q);
       const matchGenre = selectedGenre === "all" || g.genre === selectedGenre;
       return matchQuery && matchGenre;
     });
   }, [games, searchQuery, selectedGenre]);
 
-  const handleOpenCreate = () => {
+  /* ---------------- form handlers ---------------- */
+
+  const openCreate = () => {
     setEditingGame(null);
-    setFormData({ 
-      title: "", 
-      genre: "", 
-      platform: "PS5", 
-      coverUrl: "", 
-      availableScreens: [],
-      assignedHardware: [] 
-    });
-    setIsModalOpen(true);
+    setForm(EMPTY_GAME_FORM);
+    setIsFormOpen(true);
   };
 
-  const handleOpenEdit = (game) => {
+  const openEdit = (game) => {
     setEditingGame(game);
-    setFormData({
-      title: game.title || "",
-      genre: game.genre || "",
-      platform: game.platform || "PS5",
-      coverUrl: game.coverUrl || "",
-      availableScreens: game.availableScreens ? game.availableScreens.map((s) => s._id || s) : [],
-      assignedHardware: game.assignedHardware ? game.assignedHardware.map((h) => h._id || h) : [],
-    });
-    setIsModalOpen(true);
+    setForm(gameToForm(game));
+    setIsFormOpen(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.genre) {
+
+    if (!form.title.trim() || !form.genre.trim()) {
       notify.error("Please fill in game title and genre");
+      return;
+    }
+    if (!editingGame && (!form.thumbnailFile || !form.coverFile)) {
+      notify.error("Please upload both a thumbnail and a cover image");
       return;
     }
 
     setSubmitting(true);
     try {
-      if (editingGame) {
-        await gameService.updateGame(editingGame._id, formData);
-        notify.success("Game updated successfully");
-      } else {
-        await gameService.createGame(formData);
-        notify.success("Game added to catalog");
-      }
-      setIsModalOpen(false);
-      fetchData();
+      const saved = editingGame
+        ? await gameService.updateGame(editingGame._id, form)
+        : await gameService.createGame(form);
+
+      upsertLocal(saved);
+      notify.success(editingGame ? "Game updated" : "Game added to catalog");
+      setIsFormOpen(false);
     } catch (error) {
       notify.error(error.response?.data?.error || "Failed to save game");
     } finally {
@@ -136,97 +155,102 @@ export default function GamesManagement() {
     }
   };
 
+  const handleToggleActive = async (game) => {
+    try {
+      const saved = await gameService.patchGame(game._id, { isActive: !game.isActive });
+      upsertLocal(saved);
+      notify.success(saved.isActive ? `${game.title} is now live` : `${game.title} hidden`);
+    } catch {
+      notify.error("Failed to update visibility");
+    }
+  };
+
   const handleDeleteConfirm = async () => {
     if (!gameToDelete) return;
     try {
       await gameService.deleteGame(gameToDelete);
+      setGames((prev) => prev.filter((g) => g._id !== gameToDelete));
       notify.success("Game removed from catalog");
-      fetchData();
-    } catch (error) {
+    } catch {
       notify.error("Failed to delete game");
     } finally {
       setGameToDelete(null);
-      setDeleteModalOpen(false);
     }
   };
 
-  // Drag and drop assignment handler for station matrix
-  const handleDragStart = (e, gameId) => {
-    e.dataTransfer.setData("gameId", gameId);
-  };
+  /* ---------------- station matrix ---------------- */
+
+  const handleDragStart = (e, gameId) => e.dataTransfer.setData("gameId", gameId);
 
   const handleDropOnScreen = async (e, screenId) => {
     e.preventDefault();
-    const gameId = e.dataTransfer.getData("gameId");
-    if (!gameId) return;
-
-    const game = games.find((g) => g._id === gameId);
+    const game = games.find((g) => g._id === e.dataTransfer.getData("gameId"));
     if (!game) return;
 
-    const currentScreens = game.availableScreens ? game.availableScreens.map((s) => s._id || s) : [];
-    if (currentScreens.includes(screenId)) return;
+    const current = (game.availableScreens || []).map(idOf);
+    if (current.includes(screenId)) return;
 
-    const updatedScreens = [...currentScreens, screenId];
     try {
-      await gameService.updateGame(gameId, { availableScreens: updatedScreens });
-      notify.success(`Assigned ${game.title} to station successfully`);
-      fetchData();
-    } catch (error) {
+      const saved = await gameService.patchGame(game._id, {
+        availableScreens: [...current, screenId],
+      });
+      upsertLocal(saved);
+      notify.success(`Assigned ${game.title} to station`);
+    } catch {
       notify.error("Failed to update screen assignment");
     }
   };
 
   const handleRemoveFromScreen = async (game, screenId) => {
-    const currentScreens = game.availableScreens ? game.availableScreens.map((s) => s._id || s) : [];
-    const updatedScreens = currentScreens.filter((id) => id !== screenId);
+    const updated = (game.availableScreens || []).map(idOf).filter((id) => id !== screenId);
     try {
-      await gameService.updateGame(game._id, { availableScreens: updatedScreens });
+      const saved = await gameService.patchGame(game._id, { availableScreens: updated });
+      upsertLocal(saved);
       notify.success("Unassigned game from station");
-      fetchData();
-    } catch (error) {
+    } catch {
       notify.error("Failed to update screen assignment");
     }
   };
 
+  /* ---------------- render ---------------- */
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-24 font-body text-main px-4 sm:px-6">
-      
-      {/* Header Banner */}
+      {/* Header */}
       <div className="flex flex-col gap-4 border-b border-border-divider/75 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-main md:text-3xl">
-            Games Store & Station Manager
+            Games Library
           </h1>
           <p className="mt-1 text-xs text-sub sm:text-sm">
-            Manage game titles, cover art, hardware links, and station matrix mapping.
+            Manage artwork, play modes, and station assignments. {games.length} titles.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="flex rounded-xl border border-border-divider bg-app-bg p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("store")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                viewMode === "store" ? "bg-primary-cyan text-app-bg font-bold shadow-sm" : "text-sub hover:text-main"
-              }`}
-            >
-              <GameController size={14} /> Store View
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("admin_columns")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                viewMode === "admin_columns" ? "bg-primary-cyan text-app-bg font-bold shadow-sm" : "text-sub hover:text-main"
-              }`}
-            >
-              <ArrowsLeftRight size={14} /> Station Matrix
-            </button>
+            {[
+              { key: "store", label: "Library", icon: GameController },
+              { key: "admin_columns", label: "Station Matrix", icon: ArrowsLeftRight },
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setViewMode(key)}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === key
+                    ? "bg-primary-cyan text-app-bg font-bold shadow-sm"
+                    : "text-sub hover:text-main"
+                }`}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
           </div>
 
           <button
             type="button"
-            onClick={handleOpenCreate}
+            onClick={openCreate}
             className={`flex h-10 items-center gap-1.5 rounded-xl bg-primary-cyan px-3.5 font-mono text-xs font-bold uppercase tracking-wider text-app-bg shadow-md hover:bg-primary-cyan/90 cursor-pointer ${FOCUS}`}
           >
             <Plus size={15} weight="bold" /> Add Game
@@ -234,7 +258,7 @@ export default function GamesManagement() {
         </div>
       </div>
 
-      {/* Search & Filters */}
+      {/* Search & genre filters */}
       {viewMode === "store" && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card-panel p-3.5 rounded-2xl border border-border-divider">
           <div className="relative flex-1 max-w-sm">
@@ -267,95 +291,175 @@ export default function GamesManagement() {
         </div>
       )}
 
-      {/* Main Content Area */}
+      {/* Content */}
       {loading ? (
         <Loader variant="skeleton-table" lines={5} text="Loading game catalog..." />
       ) : viewMode === "store" ? (
         filteredGames.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border-divider bg-card-panel/30">
             <GameController size={32} className="text-sub mb-2" />
-            <h3 className="text-sm font-bold text-main">No games found</h3>
-            <p className="text-xs text-sub mt-0.5">Try adjusting your search or filter criteria.</p>
+            <h3 className="text-sm font-bold text-main">
+              {games.length === 0 ? "No games yet" : "No games found"}
+            </h3>
+            <p className="text-xs text-sub mt-0.5">
+              {games.length === 0
+                ? "Add your first game with a thumbnail and cover image."
+                : "Try adjusting your search or filter."}
+            </p>
+            {games.length === 0 && (
+              <button
+                type="button"
+                onClick={openCreate}
+                className="mt-4 flex items-center gap-1.5 rounded-xl bg-primary-cyan px-3.5 py-2 text-xs font-bold text-app-bg cursor-pointer"
+              >
+                <Plus size={14} weight="bold" /> Add Game
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filteredGames.map((game) => (
-              <div
-                key={game._id}
-                className="group relative bg-card-panel border border-border-divider rounded-2xl overflow-hidden shadow-sm hover:border-primary-cyan/50 hover:shadow-xl transition-all flex flex-col justify-between"
-              >
-                <div className="relative aspect-[3/4] w-full bg-app-bg overflow-hidden">
-                  {game.coverUrl ? (
-                    <img
-                      src={game.coverUrl}
-                      alt={game.title}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-app-bg to-card-panel p-4 text-center">
-                      <GameController size={32} className="text-sub/50 mb-2" />
-                      <span className="text-xs font-bold text-sub">{game.title}</span>
-                    </div>
-                  )}
+            {filteredGames.map((game) => {
+              const coverSrc = game.cover?.url || game.coverUrl || game.thumbnail?.url;
+              const inactive = game.isActive === false;
 
-                  <span className="absolute top-2.5 left-2.5 rounded-lg bg-black/70 backdrop-blur-md px-2 py-0.5 font-mono text-[9px] font-bold text-white border border-white/20">
-                    {game.platform || "PS5"}
-                  </span>
-
-                  <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(game)}
-                      className="size-7 rounded-lg bg-black/70 backdrop-blur-md text-white flex items-center justify-center hover:bg-primary-cyan hover:text-app-bg transition-colors cursor-pointer"
-                    >
-                      <PencilSimple size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setGameToDelete(game._id); setDeleteModalOpen(true); }}
-                      className="size-7 rounded-lg bg-black/70 backdrop-blur-md text-white flex items-center justify-center hover:bg-rose-500 transition-colors cursor-pointer"
-                    >
-                      <Trash size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-3 space-y-2">
-                  <div>
-                    <h3 className="text-xs font-bold text-main truncate">{game.title}</h3>
-                    <p className="text-[10px] text-sub">{game.genre}</p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1 pt-1 border-t border-border-divider/50">
-                    {game.availableScreens && game.availableScreens.length > 0 ? (
-                      game.availableScreens.map((s) => (
-                        <span key={s._id || s} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-app-bg border border-border-divider text-main">
-                          {s.name || "Station"}
-                        </span>
-                      ))
+              return (
+                <div
+                  key={game._id}
+                  className={`group relative bg-card-panel border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col ${
+                    game.isFeatured
+                      ? "border-amber-400/50 hover:border-amber-400"
+                      : "border-border-divider hover:border-primary-cyan/50"
+                  }`}
+                >
+                  {/* Cover */}
+                  <div className="relative aspect-[3/4] w-full bg-app-bg overflow-hidden">
+                    {coverSrc ? (
+                      <img
+                        src={coverSrc}
+                        alt={game.title}
+                        loading="lazy"
+                        className={`h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 ${
+                          inactive ? "grayscale opacity-50" : ""
+                        }`}
+                      />
                     ) : (
-                      <span className="text-[9px] text-sub italic">No stations</span>
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-app-bg to-card-panel p-4 text-center">
+                        <GameController size={32} className="text-sub/50 mb-2" />
+                        <span className="text-xs font-bold text-sub">{game.title}</span>
+                        <span className="mt-1 text-[10px] text-rose-400">Missing artwork</span>
+                      </div>
                     )}
+
+                    {/* Badges */}
+                    <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1">
+                      <span className="rounded-lg bg-black/70 backdrop-blur-md px-2 py-0.5 font-mono text-[9px] font-bold text-white border border-white/20">
+                        {game.platform || "PS5"}
+                      </span>
+                      {game.isFeatured && (
+                        <span className="flex items-center gap-0.5 rounded-lg bg-amber-400 px-1.5 py-0.5 font-mono text-[9px] font-bold text-black">
+                          <Star size={9} weight="fill" /> FEATURED
+                        </span>
+                      )}
+                      {inactive && (
+                        <span className="rounded-lg bg-rose-500 px-1.5 py-0.5 font-mono text-[9px] font-bold text-white">
+                          HIDDEN
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Hover actions */}
+                    <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+                      <button
+                        type="button"
+                        title="Edit"
+                        onClick={() => openEdit(game)}
+                        className={`${ICON_BTN} hover:bg-primary-cyan hover:text-app-bg`}
+                      >
+                        <PencilSimple size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        title={inactive ? "Show on website" : "Hide from website"}
+                        onClick={() => handleToggleActive(game)}
+                        className={`${ICON_BTN} hover:bg-amber-400 hover:text-black`}
+                      >
+                        {inactive ? <Eye size={13} /> : <EyeSlash size={13} />}
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete"
+                        onClick={() => setGameToDelete(game._id)}
+                        className={`${ICON_BTN} hover:bg-rose-500`}
+                      >
+                        <Trash size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-3 space-y-2 flex-1 flex flex-col">
+                    <div>
+                      <h3 className="text-xs font-bold text-main truncate">{game.title}</h3>
+                      <p className="text-[10px] text-sub flex items-center gap-1">
+                        {game.genre}
+                        <span className="text-sub/40">•</span>
+                        <Users size={10} />
+                        {game.minPlayers === game.maxPlayers
+                          ? `${game.maxPlayers || 1}P`
+                          : `${game.minPlayers}-${game.maxPlayers}P`}
+                      </p>
+                    </div>
+
+                    {game.supportedModes?.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {game.supportedModes.map((m) => (
+                          <span
+                            key={m}
+                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                              m === game.recommendedMode
+                                ? "border-primary-cyan/40 bg-primary-cyan/10 text-primary-cyan"
+                                : "border-border-divider bg-app-bg text-sub"
+                            }`}
+                          >
+                            {getModeLabel(m)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-auto flex flex-wrap gap-1 pt-2 border-t border-border-divider/50">
+                      {game.availableScreens?.length > 0 ? (
+                        game.availableScreens.map((s) => (
+                          <span
+                            key={idOf(s)}
+                            className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-app-bg border border-border-divider text-main"
+                          >
+                            {s.name || "Station"}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[9px] text-sub italic">No stations</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       ) : (
-        /* Station Matrix & Drag-Drop Column Assignment */
+        /* Station Matrix */
         <div className="space-y-4">
           <div className="bg-primary-cyan/10 border border-primary-cyan/30 p-3 rounded-2xl flex items-center justify-between text-xs text-primary-cyan font-mono">
-            <span>✨ Drag games from the library and drop them into station columns to map them instantly.</span>
+            <span>Drag games from the library into a station column to assign them.</span>
             <span className="font-bold">Matrix Edit Active</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
             <div className="bg-card-panel border border-border-divider rounded-2xl p-4 space-y-3 min-h-[400px]">
               <h3 className="text-xs font-bold text-main uppercase tracking-wider flex items-center gap-1.5">
-                <GameController size={14} className="text-primary-cyan" /> Game Library ({games.length})
+                <GameController size={14} className="text-primary-cyan" /> Library ({games.length})
               </h3>
-              <p className="text-[11px] text-sub">Drag any game card into station columns.</p>
 
               <div className="space-y-2 max-h-[500px] overflow-y-auto no-scrollbar pr-1">
                 {games.map((game) => (
@@ -363,15 +467,23 @@ export default function GamesManagement() {
                     key={game._id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, game._id)}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-app-bg border border-border-divider cursor-grab active:cursor-grabbing hover:border-primary-cyan/50 transition-all shadow-sm"
+                    className="flex items-center gap-2.5 p-2 rounded-xl bg-app-bg border border-border-divider cursor-grab active:cursor-grabbing hover:border-primary-cyan/50 transition-all shadow-sm"
                   >
-                    <div className="truncate pr-2">
-                      <p className="text-xs font-bold text-main truncate">{game.title}</p>
-                      <p className="text-[10px] text-sub">{game.genre}</p>
+                    <div className="size-9 shrink-0 overflow-hidden rounded-lg bg-card-panel">
+                      {game.thumbnail?.url || game.cover?.url ? (
+                        <img
+                          src={game.thumbnail?.url || game.cover?.url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <GameController size={16} className="m-auto mt-2.5 text-sub/50" />
+                      )}
                     </div>
-                    <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-card-panel border border-border-divider text-sub">
-                      {game.platform || "PS5"}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-main truncate">{game.title}</p>
+                      <p className="text-[10px] text-sub truncate">{game.genre}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -380,7 +492,7 @@ export default function GamesManagement() {
             <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
               {screens.map((screen) => {
                 const assignedGames = games.filter((g) =>
-                  g.availableScreens?.some((s) => (s._id || s) === screen._id)
+                  g.availableScreens?.some((s) => idOf(s) === screen._id)
                 );
 
                 return (
@@ -404,7 +516,9 @@ export default function GamesManagement() {
                       <div className="space-y-2 min-h-[250px]">
                         {assignedGames.length === 0 ? (
                           <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border-divider/60 text-center p-4">
-                            <p className="text-[11px] text-sub italic">Drop games here to assign to {screen.name}</p>
+                            <p className="text-[11px] text-sub italic">
+                              Drop games here to assign to {screen.name}
+                            </p>
                           </div>
                         ) : (
                           assignedGames.map((game) => (
@@ -412,7 +526,9 @@ export default function GamesManagement() {
                               key={game._id}
                               className="flex items-center justify-between p-2.5 rounded-xl bg-app-bg border border-border-divider shadow-sm group"
                             >
-                              <span className="text-xs font-bold text-main truncate pr-2">{game.title}</span>
+                              <span className="text-xs font-bold text-main truncate pr-2">
+                                {game.title}
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveFromScreen(game, screen._id)}
@@ -438,142 +554,24 @@ export default function GamesManagement() {
         </div>
       )}
 
-      {/* Add / Edit Game Sheet (with Screen & Hardware Links) */}
-      <Sheet
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingGame ? "Edit Game Details" : "Add New Game"}
-        description="Configure cover art, metadata, station screens, and console hardware links."
-        footer={
-          <button type="submit" form="game-form" disabled={submitting} className={PRIMARY_BTN}>
-            {submitting ? "Saving..." : editingGame ? "Save Changes" : "Create Game"}
-          </button>
-        }
-      >
-        <form id="game-form" onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-main">Game Title</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g., EA Sports FC 25"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className={INPUT_CLASS}
-            />
-          </div>
+      <GameFormSheet
+        isOpen={isFormOpen}
+        onClose={() => !submitting && setIsFormOpen(false)}
+        onSubmit={handleSubmit}
+        isEditing={Boolean(editingGame)}
+        submitting={submitting}
+        form={form}
+        setForm={setForm}
+        screens={screens}
+        hardwareList={hardwareList}
+      />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-main">Genre</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g., Sports, Racing"
-                value={formData.genre}
-                onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-                className={INPUT_CLASS}
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-main">Platform</label>
-              <select
-                value={formData.platform}
-                onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-                className={`${INPUT_CLASS} cursor-pointer`}
-              >
-                <option value="PS5">PlayStation 5</option>
-                <option value="SimDrive">SimDrive Wheel</option>
-                <option value="PC">PC</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-main">Cover Poster Image URL</label>
-            <input
-              type="url"
-              placeholder="https://images.unsplash.com/..."
-              value={formData.coverUrl}
-              onChange={(e) => setFormData({ ...formData, coverUrl: e.target.value })}
-              className={INPUT_CLASS}
-            />
-          </div>
-
-          {/* Linked Screens */}
-          <div>
-            <label className="mb-2 block text-xs font-medium text-main">Assigned Stations / Screens</label>
-            <div className="grid grid-cols-2 gap-2 rounded-xl border border-border-divider bg-app-bg p-3">
-              {screens.map((screen) => {
-                const isSelected = formData.availableScreens.includes(screen._id);
-                return (
-                  <button
-                    type="button"
-                    key={screen._id}
-                    onClick={() => {
-                      const updated = isSelected
-                        ? formData.availableScreens.filter((id) => id !== screen._id)
-                        : [...formData.availableScreens, screen._id];
-                      setFormData({ ...formData, availableScreens: updated });
-                    }}
-                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-mono font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? "border-primary-cyan bg-primary-cyan/10 text-primary-cyan"
-                        : "border-border-divider bg-card-panel text-sub hover:text-main"
-                    }`}
-                  >
-                    <span>{screen.name}</span>
-                    {isSelected && <Check size={14} weight="bold" className="text-primary-cyan" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Linked Hardware Assets (PS5 Consoles / Peripherals) */}
-          <div>
-            <label className="mb-2 block text-xs font-medium text-main flex items-center gap-1.5">
-              <Cpu size={14} className="text-primary-cyan" /> Assigned Hardware Assets (Consoles / Peripherals)
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border border-border-divider bg-app-bg p-3 max-h-40 overflow-y-auto">
-              {hardwareList.map((hw) => {
-                const isSelected = formData.assignedHardware.includes(hw._id);
-                return (
-                  <button
-                    type="button"
-                    key={hw._id}
-                    onClick={() => {
-                      const updated = isSelected
-                        ? formData.assignedHardware.filter((id) => id !== hw._id)
-                        : [...formData.assignedHardware, hw._id];
-                      setFormData({ ...formData, assignedHardware: updated });
-                    }}
-                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-mono transition-all cursor-pointer ${
-                      isSelected
-                        ? "border-primary-cyan bg-primary-cyan/10 text-primary-cyan"
-                        : "border-border-divider bg-card-panel text-sub hover:text-main"
-                    }`}
-                  >
-                    <div className="text-left truncate pr-1">
-                      <p className="font-bold truncate">{hw.name}</p>
-                      <p className="text-[10px] text-sub">{hw.assetId} • {hw.station}</p>
-                    </div>
-                    {isSelected && <Check size={14} weight="bold" className="text-primary-cyan shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </form>
-      </Sheet>
-
-      {/* Delete Confirmation Modal */}
       <ConfirmModal
-        isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
+        isOpen={Boolean(gameToDelete)}
+        onClose={() => setGameToDelete(null)}
         onConfirm={handleDeleteConfirm}
         title="Delete Game from Catalog"
-        message="Are you sure you want to remove this game? This action cannot be undone."
+        message="This removes the game and deletes its thumbnail and cover from Cloudinary. This can't be undone."
         confirmText="Delete"
         danger={true}
       />

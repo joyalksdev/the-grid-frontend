@@ -19,7 +19,7 @@ export default function AdminLayout() {
 
       {/* Admin Main Workspace */}
       <div className="relative z-10 flex min-h-dvh min-w-0 flex-1 flex-col pb-[72px] lg:pb-0">
-        <main id="main-content" className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 lg:p-8">
+        <main id="main-content" className="mx-auto w-full flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
         <Footer />
