@@ -11,6 +11,7 @@ const MODE_OPTIONS = [
   { value: "Dual", label: "Dual", detail: "2 Players" },
   { value: "Triple", label: "Triple", detail: "3 Players" },
   { value: "Big", label: "Big Mode", detail: "4 Players" },
+  { value: "GTA6_Launch", label: "GTA VI", detail: "1 Player" },
 ];
 
 const COLS = { 3: "grid-cols-3", 4: "grid-cols-4" };
